@@ -1,0 +1,15 @@
+module.exports = {
+    transform: {
+        '^.+\\.tsx?$': 'ts-jest',
+    },
+    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+    testTimeout: 20 * 1000,
+    collectCoverage: true,
+    maxWorkers: 1,
+    globals: {
+        'ts-jest': {
+            isolatedModules: true,
+        },
+        Uint8Array: Uint8Array,
+    },
+};
