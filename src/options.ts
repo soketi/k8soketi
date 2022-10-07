@@ -21,6 +21,16 @@ export interface Options {
         cache: {
             driver: string;
         };
+        dns: {
+            discovery: {
+                host: string;
+                port: number;
+            };
+            server: {
+                host: string;
+                port: number;
+            };
+        };
         limits: {
             channels: {
                 maxNameLength: number;

@@ -42,6 +42,16 @@ export default class Server {
             cache: {
                 driver: 'memory',
             },
+            dns: {
+                discovery: {
+                    host: '127.0.0.1',
+                    port: 15353,
+                },
+                server: {
+                    host: '127.0.0.1',
+                    port: 53,
+                },
+            },
             limits: {
                 channels: {
                     maxNameLength: 200,

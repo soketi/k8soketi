@@ -42,26 +42,30 @@ export class PeerNode {
     }
 
     async initialize(): Promise<void> {
+        let { host: discoveryHost, port: discoveryPort } = this.options.websockets.dns.discovery;
+        let { host: dnsHost, port: dnsPort } = this.options.websockets.dns.server;
+
         this.libp2p = await createLibp2p({
             addresses: {
-                listen: ['/ip4/127.0.0.1/tcp/0'],
+                listen: [`/ip4/${discoveryHost}/tcp/${discoveryPort}`],
             },
             transports: [
-                new TCP(),
+                new TCP(), // TODO: Timeout settings
             ],
             streamMuxers: [
-                new Mplex(),
+                new Mplex(), // TODO: Mplex settings
             ],
             connectionEncryption: [
-                new Noise(),
+                new Noise(), // TODO: Use SSL keys
             ],
             pubsub: new GossipSub({
-                allowPublishToZeroPeers: true,
+                allowPublishToZeroPeers: true, // TODO: Pubsub settings
             }),
             peerDiscovery: [
                 new MulticastDNS({
-                    interval: 20e3,
-                    port: 15353,
+                    interval: 5e3,
+                    // TODO: DNS IP
+                    port: dnsPort,
                     broadcast: true,
                 }),
             ],
@@ -119,7 +123,7 @@ export class PeerNode {
     }
 
     async subscribeToTopic(topic: string, callback: (message: PubsubMessage) => void): Promise<void> {
-        this.ensurePeerIsRunning(() => {
+        this.ensurePeerIsRunning(async () => {
             this.libp2p.pubsub.subscribe(topic);
 
             if (!this.listenersByTopic.has(topic)) {
@@ -164,16 +168,21 @@ export class PeerNode {
 
     async makeRequest({ peerId, action, version = '1', data }: RequestData): Promise<{ [key: string]: any; }> {
         return new Promise(async resolve => {
-            let stream = await this.libp2p.dialProtocol(peerId, `/v${version}/${action}`);
-            let requestData = fromString(JSON.stringify(data));
+            try {
+                let stream = await this.libp2p.dialProtocol(peerId, `/v${version}/${action}`);
 
-            Log.info(`[Request][/v${version}/${action}] Making request: ${requestData}`);
+                let requestData = fromString(JSON.stringify(data));
 
-            pipe([requestData], stream, async (source) => {
-                for await (let data of source) {
-                    resolve(JSON.parse(toString(data.subarray())));
-                }
-            });
+                Log.info(`[Request][/v${version}/${action}] Making request: ${requestData}`);
+
+                pipe([requestData], stream, async (source) => {
+                    for await (let data of source) {
+                        resolve(JSON.parse(toString(data.subarray())));
+                    }
+                });
+            } catch (e) {
+                Log.warning(`[Request][/v${version}/${action}] ${e}`);
+            }
         });
     }
 
@@ -195,10 +204,10 @@ export class PeerNode {
     }
 
     async start(): Promise<void> {
-        await this.libp2p.start();
+        this.libp2p.start();
 
         for await (let handler of this.ensurePeerIsRunningHandlers) {
-            await handler();
+            handler();
         }
     }
 

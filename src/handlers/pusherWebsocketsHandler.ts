@@ -91,7 +91,7 @@ export class PusherWebsocketsHandler {
                         message: 'Connection not authorized within timeout.',
                     },
                 }, 4009);
-            }, 30_000);
+            }, 30e3);
         }
 
         // Make sure to update the socket after new data was pushed in.
@@ -329,7 +329,7 @@ export class PusherWebsocketsHandler {
                 } catch (e) {
                     Log.warning(`[Pusher][WebSockets] ${e}`);
                 }
-            }, 120_000);
+            }, 120e3);
         }
 
         ws.sendJson = async (data) => {

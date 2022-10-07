@@ -82,7 +82,7 @@ export class WebsocketsNode {
             if ((await this.namespace(appId).getSocketsCount(true)) === 0) {
                 this.unsubscribeFromApp(appId);
             }
-        }, 5_000));
+        }, 5e3));
     }
 
     async unsubscribeFromApp(appId: string): Promise<void> {

@@ -23,7 +23,7 @@ export class MemoryCacheManager implements CacheManagerInterface {
                     delete this.memory[key];
                 }
             }
-        }, 1_000);
+        }, 1e3);
     }
 
     async has(key: string): Promise<boolean> {
