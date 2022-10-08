@@ -6,7 +6,7 @@ import { PresenceChannelManager } from '../pusher-channels/presence-channel-mana
 import { PusherMessage, uWebSocketMessage } from '../message';
 import { WebsocketsNode } from '../websocketsNode';
 import { WebSocket } from './../websocket';
-import { Utils } from '../utils';
+import { WsUtils } from '../utils/ws-utils';
 
 export interface PresenceMemberInfo {
     [key: string]: any;
@@ -24,14 +24,14 @@ export interface User {
 }
 
 export class PusherWebsocketsHandler {
-    static node: WebsocketsNode;
+    static wsNode: WebsocketsNode;
 
     static async onOpen(ws: WebSocket): Promise<any> {
         Log.info(`[Pusher][WebSockets] New connection from ${ws.ip} with key ${ws.appKey}`);
 
         await this.attachDefaultDataToConnection(ws);
 
-        if (this.node.closing) {
+        if (this.wsNode.closing) {
             await ws.sendJsonAndClose({
                 event: 'pusher:error',
                 data: {
@@ -40,7 +40,7 @@ export class PusherWebsocketsHandler {
                 },
             }, 4200);
 
-            await this.node.evictSocketFromMemory(ws);
+            await this.wsNode.evictSocketFromMemory(ws);
             return;
         }
 
@@ -68,7 +68,7 @@ export class PusherWebsocketsHandler {
 
         ws.app = app.forWebSocket();
 
-        await this.node.subscribeToApp(ws.app.id);
+        this.wsNode.subscribeToApp(ws.app.id);
 
         let canConnect = await this.canConnect(ws);
 
@@ -95,7 +95,7 @@ export class PusherWebsocketsHandler {
         }
 
         // Make sure to update the socket after new data was pushed in.
-        await this.node.namespace(ws.app.id).addSocket(ws);
+        await this.wsNode.namespace(ws.app.id).addSocket(ws);
 
         await ws.sendJson({
             event: 'pusher:connection_established',
@@ -108,7 +108,7 @@ export class PusherWebsocketsHandler {
     }
 
     static async onMessage(ws: WebSocket, message: uWebSocketMessage, isBinary: boolean): Promise<any> {
-        if (this.node.closing) {
+        if (this.wsNode.closing) {
             await ws.sendJsonAndClose({
                 event: 'pusher:error',
                 data: {
@@ -117,7 +117,7 @@ export class PusherWebsocketsHandler {
                 },
             }, 4200);
 
-            await this.node.evictSocketFromMemory(ws);
+            await this.wsNode.evictSocketFromMemory(ws);
             return;
         }
 
@@ -139,7 +139,7 @@ export class PusherWebsocketsHandler {
             case 'pusher:unsubscribe': await this.handleUnsubscribe(ws, message); break;
             case 'pusher:signin': await this.handleSignin(ws, message); break;
             default:
-                if (Utils.isClientEvent(message.event)) {
+                if (WsUtils.isClientEvent(message.event)) {
                     await this.handleClientEvent(ws, message);
                     return;
                 }
@@ -154,7 +154,7 @@ export class PusherWebsocketsHandler {
 
         // If code 4200 (reconnect immediately) is called, it means the `closeAllLocalSockets()` was called.
         if (code !== 4200) {
-            await this.node.evictSocketFromMemory(ws);
+            await this.wsNode.evictSocketFromMemory(ws);
         }
     }
 
@@ -181,7 +181,7 @@ export class PusherWebsocketsHandler {
 
     protected static async handleSubscription(ws: WebSocket, message: PusherMessage): Promise<void> {
         let channel = message.data.channel;
-        let channelManager = this.node.getChannelManagerFor(channel);
+        let channelManager = this.wsNode.getChannelManagerFor(channel);
 
         if (channel.length > ws.app.maxChannelNameLength) {
             return await ws.sendJson({
@@ -230,7 +230,7 @@ export class PusherWebsocketsHandler {
         }
 
         // Make sure to update the socket after new data was pushed in.
-        this.node.namespace(ws.app.id).addSocket(ws);
+        this.wsNode.namespace(ws.app.id).addSocket(ws);
 
         // For non-presence channels, end with subscription succeeded.
         if (!(channelManager instanceof PresenceChannelManager)) {
@@ -239,7 +239,7 @@ export class PusherWebsocketsHandler {
                 channel,
             });
 
-            if (Utils.isCachingChannel(channel)) {
+            if (WsUtils.isCachingChannel(channel)) {
                 // TODO: Implement this.sendMissedCacheIfExists(ws, channel);
             }
 
@@ -247,27 +247,27 @@ export class PusherWebsocketsHandler {
         }
 
         // Otherwise, prepare a response for the presence channel.
-        let members = await this.node.namespace(ws.app.id).getChannelMembers(channel);
+        let members = await this.wsNode.namespace(ws.app.id).getChannelMembers(channel);
 
         let { user_id, user_info } = response.member;
 
         ws.presence.set(channel, response.member);
 
         // Make sure to update the socket after new data was pushed in.
-        this.node.namespace(ws.app.id).addSocket(ws);
+        this.wsNode.namespace(ws.app.id).addSocket(ws);
 
         // If the member already exists in the channel, don't resend the member_added event.
         if (!members.has(user_id as string)) {
-            await this.node.namespace(ws.app.id).broadcastMessage(
+            await this.wsNode.namespace(ws.app.id).broadcastMessage(
                 channel,
-                JSON.stringify({
+                {
                     event: 'pusher_internal:member_added',
                     channel,
                     data: JSON.stringify({
                         user_id: user_id,
                         user_info: user_info,
                     }),
-                }),
+                },
                 ws.id,
             );
 
@@ -286,13 +286,13 @@ export class PusherWebsocketsHandler {
             }),
         });
 
-        if (Utils.isCachingChannel(channel)) {
+        if (WsUtils.isCachingChannel(channel)) {
             // TODO: Implement this.sendMissedCacheIfExists(ws, channel);
         }
     }
 
     protected static async handleUnsubscribe(ws: WebSocket, message: PusherMessage): Promise<void> {
-        await this.node.unsubscribeFromChannel(ws, message.channel);
+        await this.wsNode.unsubscribeFromChannel(ws, message.channel);
     }
 
     protected static async handleClientEvent(ws: WebSocket, message: PusherMessage): Promise<void> {
@@ -353,7 +353,7 @@ export class PusherWebsocketsHandler {
     }
 
     protected static async canConnect(ws: WebSocket): Promise<boolean> {
-        let currentConnectionsCount = await this.node.namespace(ws.app.id).getSocketsCount();
+        let currentConnectionsCount = await this.wsNode.namespace(ws.app.id).getSocketsCount();
         let maxConnections = parseInt(ws.app.maxConnections as string) || -1;
 
         return currentConnectionsCount + 1 <= maxConnections || maxConnections < 0;
@@ -369,6 +369,6 @@ export class PusherWebsocketsHandler {
     }
 
     protected static checkForValidApp(ws: WebSocket): Promise<App|null> {
-        return this.node.appManager.findByKey(ws.appKey);
+        return this.wsNode.appManager.findByKey(ws.appKey);
     }
 }

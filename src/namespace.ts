@@ -1,5 +1,6 @@
 import { PresenceMember, PresenceMemberInfo } from './handlers/pusherWebsocketsHandler';
 import { Log } from './log';
+import { SentPusherMessage } from './message';
 import { WebSocket } from './websocket';
 import { WebsocketsNode } from './websocketsNode';
 
@@ -77,11 +78,6 @@ export class Namespace {
     }
 
     // @Reflect.metadata('onlyLocal', true)
-    async getChannels(): Promise<Map<string, Set<string>>> {
-        return this.channels;
-    }
-
-    // @Reflect.metadata('onlyLocal', true)
     async addUser(ws: WebSocket): Promise<void> {
         if (!ws.user) {
             return;
@@ -112,7 +108,7 @@ export class Namespace {
     }
 
     // @Reflect.metadata('onlyLocal', true)
-    async getUserSockets(userId: string|number, onlyLocal = false): Promise<Set<WebSocket>> {
+    async getUserSockets(userId: string|number): Promise<Set<WebSocket>> {
         let wsIds = this.users.get(userId);
 
         if (!wsIds || wsIds.size === 0) {
@@ -125,52 +121,8 @@ export class Namespace {
         }, new Set<WebSocket>());
     }
 
-    async getSockets(onlyLocal = false): Promise<Map<string, WebSocket>> {
-        return this.sockets;
-    }
-
-    async getSocketsCount(onlyLocal = false): Promise<number> {
-        let size = this.sockets.size;
-
-        if (!onlyLocal) {
-            let data = await this.makeRequestToAllPeers({
-                data: {
-                    appId: this.appId,
-                    method: 'getSocketsCount',
-                    args: [true],
-                },
-            });
-
-            for await (let socketsCount of data) {
-                size += socketsCount;
-            }
-        }
-
-        return size;
-    }
-
-    async getChannelsWithSocketsCount(onlyLocal = false): Promise<Map<string, number>> {
-        let channels = await this.getChannels();
-        let list = new Map<string, number>();
-
-        for await (let [channel, connections] of channels) {
-            list.set(channel, connections.size);
-        }
-
-        if (!onlyLocal) {
-            let dataFromPeers = await this.makeRequestToAllPeers({
-                data: {
-                    appId: this.appId,
-                    method: 'getChannelsWithSocketsCount',
-                    args: [true],
-                },
-            });
-        }
-
-        return list;
-    }
-
-    async getChannelSockets(channel: string, onlyLocal = false): Promise<Map<string, WebSocket>> {
+    // @Reflect.metadata('onlyLocal', true)
+    async getChannelSockets(channel: string): Promise<Map<string, WebSocket>> {
         if (!this.channels.has(channel)) {
             return new Map<string, WebSocket>();
         }
@@ -186,10 +138,81 @@ export class Namespace {
         }, new Map<string, WebSocket>());
     }
 
+    async getChannelSocketsCount(channel: string, onlyLocal = false): Promise<number> {
+        if (!this.channels.has(channel)) {
+            return 0;
+        }
+
+        let size = this.channels.get(channel).size;
+
+        if (!onlyLocal) {
+            let dataFromOtherPeers: number[] = await this.makeRequestToAllPeers({
+                data: {
+                    appId: this.appId,
+                    method: 'getChannelSocketsCount',
+                    args: [channel, true],
+                },
+            });
+
+            for await (let socketsCount of dataFromOtherPeers) {
+                size += socketsCount;
+            }
+        }
+
+        return size;
+    }
+
+    async getSocketsCount(onlyLocal = false): Promise<number> {
+        let size = this.sockets.size;
+
+        if (!onlyLocal) {
+            let dataFromOtherPeers: number[] = await this.makeRequestToAllPeers({
+                data: {
+                    appId: this.appId,
+                    method: 'getSocketsCount',
+                    args: [true],
+                },
+            });
+
+            for await (let socketsCount of dataFromOtherPeers) {
+                size += socketsCount;
+            }
+        }
+
+        return size;
+    }
+
+    async getChannelsWithSocketsCount(onlyLocal = false): Promise<Map<string, number>> {
+        let channels = this.channels;
+        let list = new Map<string, number>();
+
+        for await (let [channel, connections] of channels) {
+            list.set(channel, connections.size);
+        }
+
+        if (!onlyLocal) {
+            let dataFromPeers: [string, number][] = await this.makeRequestToAllPeers({
+                data: {
+                    appId: this.appId,
+                    method: 'getChannelsWithSocketsCount',
+                    args: [true],
+                },
+            });
+
+            for await (let [channel, socketsCount] of dataFromPeers) {
+                list.set(channel, (list.get(channel) || 0) + socketsCount);
+            }
+        }
+
+        return list;
+    }
+
     async getChannelMembers(channel: string, onlyLocal = false): Promise<Map<string, PresenceMemberInfo>> {
+        // Ask only for the local sockets, as we will build the presence members for a channel only on this node.
+        // We will ask other nodes to give us the list of members and let them process the members from the current sockets.
         let sockets = await this.getChannelSockets(channel);
 
-        return Array.from(sockets).reduce((members, [wsId, ws]) => {
+        let members = Array.from(sockets).reduce((members, [wsId, ws]) => {
             let member: PresenceMember = ws.presence ? ws.presence.get(channel) : null;
 
             if (member) {
@@ -198,14 +221,56 @@ export class Namespace {
 
             return members;
         }, new Map<string, PresenceMemberInfo>());
+
+        if (!onlyLocal) {
+            let dataFromPeers: [string, PresenceMemberInfo][] = await this.makeRequestToAllPeers({
+                data: {
+                    appId: this.appId,
+                    method: 'getChannelMembers',
+                    args: [channel, true],
+                },
+            });
+
+            for await (let [userId, userInfo] of dataFromPeers) {
+                members.set(userId, userInfo);
+            }
+        }
+
+        return members;
     }
 
     async getChannelMembersCount(channel: string, onlyLocal = false): Promise<number> {
-        return (await this.getChannelMembers(channel)).size;
+        let size = (await this.getChannelMembers(channel, true)).size;
+
+        if (!onlyLocal) {
+            let dataFromPeers: number[] = await this.makeRequestToAllPeers({
+                data: {
+                    appId: this.appId,
+                    method: 'getChannelMembersCount',
+                    args: [channel, true],
+                },
+            });
+
+            for await (let membersCount of dataFromPeers) {
+                size += membersCount;
+            }
+        }
+
+        return size;
     }
 
     async terminateUserConnections(userId: number|string, onlyLocal = false): Promise<void> {
-        let sockets = await this.getSockets();
+        if (!onlyLocal) {
+            this.makeRequestToAllPeers({
+                data: {
+                    appId: this.appId,
+                    method: 'terminateUserConnections',
+                    args: [userId, true],
+                },
+            });
+        }
+
+        let sockets = this.sockets;
 
         for await (let [, ws] of sockets) {
             if (!ws.user || ws.user.id != userId) {
@@ -219,12 +284,12 @@ export class Namespace {
                     message: 'You got disconnected by the app.',
                 },
             }, 4009);
-        };
+        }
     }
 
-    async broadcastMessage(channel: string, data: string, exceptingId: string|null = null, onlyLocal = false): Promise<void> {
+    async broadcastMessage(channel: string, data: SentPusherMessage, exceptingId: string|null = null, onlyLocal = false): Promise<void> {
         if (!onlyLocal) {
-            await this.makeRequestToAllPeers({
+            this.makeRequestToAllPeers({
                 data: {
                     appId: this.appId,
                     method: 'broadcastMessage',
@@ -245,14 +310,14 @@ export class Namespace {
 
             for await (let ws of sockets) {
                 if (ws.sendJson) {
-                    await ws.sendJson(JSON.parse(data));
+                    await ws.sendJson(data);
                 }
             }
 
             return;
         }
 
-        let sockets = await this.getChannelSockets(channel, true);
+        let sockets = await this.getChannelSockets(channel);
 
         for await (let [wsId, ws] of sockets) {
             if (exceptingId && exceptingId === ws.id) {
@@ -261,7 +326,7 @@ export class Namespace {
 
             // Fix race conditions.
             if (ws.sendJson) {
-                await ws.sendJson(JSON.parse(data));
+                await ws.sendJson(data);
             }
         }
     }

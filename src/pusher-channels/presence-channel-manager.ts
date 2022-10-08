@@ -1,13 +1,13 @@
 import { JoinResponse, LeaveResponse } from './public-channel-manager';
+import { MetricsUtils } from '../utils/metrics-utils';
 import { PresenceMember } from '../handlers/pusherWebsocketsHandler';
 import { PrivateChannelManager } from './private-channel-manager';
 import { PusherMessage } from '../message';
-import { Utils } from '../utils';
 import { WebSocket } from './../websocket';
 
 export class PresenceChannelManager extends PrivateChannelManager {
     async join(ws: WebSocket, channel: string, message?: PusherMessage): Promise<JoinResponse> {
-        let membersCount = await this.node.namespace(ws.app.id).getChannelMembersCount(channel);
+        let membersCount = await this.wsNode.namespace(ws.app.id).getChannelMembersCount(channel);
 
         if (membersCount + 1 > ws.app.maxPresenceMembersPerChannel) {
             return {
@@ -20,7 +20,7 @@ export class PresenceChannelManager extends PrivateChannelManager {
         }
 
         let member: PresenceMember = JSON.parse(message.data.channel_data);
-        let memberSizeInKb = Utils.dataToKilobytes(member.user_info);
+        let memberSizeInKb = MetricsUtils.dataToKilobytes(member.user_info);
 
         if (memberSizeInKb > ws.app.maxPresenceMemberSizeInKb) {
             return {

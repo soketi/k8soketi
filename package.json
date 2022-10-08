@@ -43,6 +43,7 @@
     "it-pipe": "^2.0.4",
     "libp2p": "^0.39.2",
     "pusher": "^5.1.1-beta",
+    "query-string": "^7.1.1",
     "ts-node": "^10.9.1",
     "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js.git#v20.10.0"
   },

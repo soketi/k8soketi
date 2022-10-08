@@ -6,21 +6,21 @@ registries:
     username: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
     password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
 updates:
-- package-ecosystem: github-actions
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 100
-- package-ecosystem: npm
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 100
-  versioning-strategy: increase
-- package-ecosystem: docker
-  directory: "/"
-  registries:
-    - quay
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 100
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 100
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 100
+    versioning-strategy: increase
+  - package-ecosystem: docker
+    directory: "/"
+    registries:
+      - quay
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 100

@@ -1,4 +1,6 @@
+import { AppAuthenticationMiddleware } from './middleware/app-authentication-middleware';
 import { AppManager } from './app-managers/app-manager';
+import { AppRetrievalMiddleware } from './middleware/app-retrieval-middleware';
 import { CacheManager } from './cache-managers/cache-manager';
 import { EncryptedPrivateChannelManager } from './pusher-channels/encrypted-private-channel-manager';
 import { HttpRequest, HttpResponse, TemplatedApp } from 'uWebSockets.js';
@@ -10,10 +12,11 @@ import { PresenceChannelManager } from './pusher-channels/presence-channel-manag
 import { PrivateChannelManager } from './pusher-channels/private-channel-manager';
 import { PublicChannelManager } from './pusher-channels/public-channel-manager';
 import { PubsubAppMessage, uWebSocketMessage } from './message';
+import { PusherHttpApiHandler } from './handlers/pusherHttpApiHandler';
 import { PusherWebsocketsHandler } from './handlers/pusherWebsocketsHandler';
-import { Utils } from './utils';
 import uWS from 'uWebSockets.js';
 import { WebSocket } from './websocket';
+import { WsUtils } from './utils/ws-utils';
 
 export class WebsocketsNode {
     protected app: TemplatedApp;
@@ -45,9 +48,10 @@ export class WebsocketsNode {
         this.peerNode = peerNode;
         this.app = uWS.App();
 
-        PusherWebsocketsHandler.node = this;
+        PusherWebsocketsHandler.wsNode = this;
+        PusherHttpApiHandler.wsNode = this;
 
-        await this.registerPusherRoute();
+        await this.registerPusherRoutes();
         await this.registerCacheManager();
         await this.registerAppManager();
         await this.registerProtocols();
@@ -172,13 +176,13 @@ export class WebsocketsNode {
                 if (!members.has(member.user_id as string)) {
                     this.namespace(ws.app.id).broadcastMessage(
                         channel,
-                        JSON.stringify({
+                        {
                             event: 'pusher_internal:member_removed',
                             channel,
                             data: JSON.stringify({
                                 user_id: member.user_id,
                             }),
-                        }),
+                        },
                         ws.id,
                     );
                 }
@@ -202,7 +206,7 @@ export class WebsocketsNode {
         }
 
         for await (let [namespaceId, namespace] of this.namespaces) {
-            let sockets = await namespace.getSockets();
+            let sockets = namespace.sockets;
 
             for await (let [, ws] of sockets) {
                 await ws.sendJsonAndClose({
@@ -224,8 +228,8 @@ export class WebsocketsNode {
         Log.info(`[WebSockets] Closed all local sockets.`);
     }
 
-    protected async registerPusherRoute(): Promise<void> {
-        this.app = this.app.ws('/app/:key', {
+    protected async registerPusherRoutes(): Promise<void> {
+        this.app.ws('/app/:key', {
             idleTimeout: 120,
             maxBackpressure: 1024 * 1024,
             maxPayloadLength: 100 * 1024 * 1024,
@@ -241,6 +245,72 @@ export class WebsocketsNode {
             upgrade: async (res: HttpResponse, req: HttpRequest, context) => {
                 return await PusherWebsocketsHandler.onUpgrade(res, req, context);
             },
+        });
+
+        this.app.get('/', async (res, req) => {
+            return await PusherHttpApiHandler.serve('healthCheck', res, req);
+        });
+
+        this.app.get('/ready', async (res, req) => {
+            return await PusherHttpApiHandler.serve('ready', res, req);
+        });
+
+        this.app.get('/accept-traffic', async (res, req) => {
+            return await PusherHttpApiHandler.serve('acceptTraffic', res, req);
+        });
+
+        // TODO: Implement
+        // this.app.get('/metrics', async (res, req) => await PusherHttpApiHandler.metrics(res));
+
+        this.app.get('/apps/:appId/channels', async (res, req) => {
+            // TODO: Rate limiting for reads
+            return await PusherHttpApiHandler.serve('channels', res, req, [
+                new AppRetrievalMiddleware(this),
+                new AppAuthenticationMiddleware(this),
+            ], ['appId']);
+        });
+
+        this.app.get('/apps/:appId/channels/:channelName', async (res, req) => {
+            // TODO: Rate limiting for reads
+            return await PusherHttpApiHandler.serve('channel', res, req, [
+                new AppRetrievalMiddleware(this),
+                new AppAuthenticationMiddleware(this),
+            ], ['appId', 'channelName']);
+        });
+
+        this.app.get('/apps/:appId/channels/:channelName/users', async (res, req) => {
+            // TODO: Rate limiting for reads
+            return await PusherHttpApiHandler.serve('channelUsers', res, req, [
+                new AppRetrievalMiddleware(this),
+                new AppAuthenticationMiddleware(this),
+            ], ['appId', 'channelName']);
+        });
+
+        this.app.post('/apps/:appId/events', async (res, req) => {
+            // TODO: Rate limiting for writes
+            return await PusherHttpApiHandler.serve('events', res, req, [
+                new AppRetrievalMiddleware(this),
+                new AppAuthenticationMiddleware(this),
+            ], ['appId']);
+        });
+
+        this.app.post('/apps/:appId/batch_events', async (res, req) => {
+            // TODO: Rate limiting for writes
+            return await PusherHttpApiHandler.serve('batchEvents', res, req, [
+                new AppRetrievalMiddleware(this),
+                new AppAuthenticationMiddleware(this),
+            ], ['appId']);
+        });
+
+        this.app.post('/apps/:appId/users/:userId/terminate_connections', async (res, req) => {
+            return await PusherHttpApiHandler.serve('terminateUserConnections', res, req, [
+                new AppRetrievalMiddleware(this),
+                new AppAuthenticationMiddleware(this),
+            ], ['appId', 'userId']);
+        });
+
+        this.app.any('/*', async (res, req) => {
+            return await PusherHttpApiHandler.serve('notFound', res, req);
         });
     }
 
@@ -269,15 +339,15 @@ export class WebsocketsNode {
     }
 
     getChannelManagerFor(channel: string): PublicChannelManager|PrivateChannelManager|EncryptedPrivateChannelManager|PresenceChannelManager {
-        if (Utils.isPresenceChannel(channel)) {
+        if (WsUtils.isPresenceChannel(channel)) {
             return this.presenceChannelManager;
         }
 
-        if (Utils.isEncryptedPrivateChannel(channel)) {
+        if (WsUtils.isEncryptedPrivateChannel(channel)) {
             return this.encryptedPrivateChannelManager;
         }
 
-        if (Utils.isPrivateChannel(channel)) {
+        if (WsUtils.isPrivateChannel(channel)) {
             return this.privateChannelManager;
         }
 

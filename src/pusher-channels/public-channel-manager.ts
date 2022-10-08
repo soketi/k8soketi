@@ -2,7 +2,7 @@ import { PresenceMember } from '../handlers/pusherWebsocketsHandler';
 import { PusherMessage } from '../message';
 import { WebSocket } from './../websocket';
 import { WebsocketsNode } from '../websocketsNode';
-import { Utils } from '../utils';
+import { WsUtils } from '../utils/ws-utils';
 
 export interface JoinResponse {
     ws: WebSocket;
@@ -22,12 +22,12 @@ export interface LeaveResponse {
 }
 
 export class PublicChannelManager {
-    constructor(protected node: WebsocketsNode) {
+    constructor(protected wsNode: WebsocketsNode) {
         //
     }
 
     async join(ws: WebSocket, channel: string, message?: PusherMessage): Promise<JoinResponse> {
-        if (Utils.restrictedChannelName(channel)) {
+        if (WsUtils.restrictedChannelName(channel)) {
             return {
                 ws,
                 success: false,
@@ -45,7 +45,7 @@ export class PublicChannelManager {
             };
         }
 
-        let connections = await this.node.namespace(ws.app.id).addToChannel(ws, channel);
+        let connections = await this.wsNode.namespace(ws.app.id).addToChannel(ws, channel);
 
         return {
             ws,
@@ -55,7 +55,7 @@ export class PublicChannelManager {
     }
 
     async leave(ws: WebSocket, channel: string): Promise<LeaveResponse> {
-        let remainingConnections = await this.node.namespace(ws.app.id).removeFromChannel(ws.id, channel);
+        let remainingConnections = await this.wsNode.namespace(ws.app.id).removeFromChannel(ws.id, channel);
 
         return {
             left: true,

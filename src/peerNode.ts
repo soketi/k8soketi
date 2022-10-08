@@ -42,12 +42,11 @@ export class PeerNode {
     }
 
     async initialize(): Promise<void> {
-        let { host: discoveryHost, port: discoveryPort } = this.options.websockets.dns.discovery;
-        let { host: dnsHost, port: dnsPort } = this.options.websockets.dns.server;
+        let { host, port } = this.options.websockets.dns.discovery;
 
         this.libp2p = await createLibp2p({
             addresses: {
-                listen: [`/ip4/${discoveryHost}/tcp/${discoveryPort}`],
+                listen: [`/ip4/${host}/tcp/${port}`],
             },
             transports: [
                 new TCP(), // TODO: Timeout settings
@@ -64,8 +63,8 @@ export class PeerNode {
             peerDiscovery: [
                 new MulticastDNS({
                     interval: 5e3,
-                    // TODO: DNS IP
-                    port: dnsPort,
+                    // TODO: DNS IP this.options.websockets.dns.server.host
+                    port: this.options.websockets.dns.server.port,
                     broadcast: true,
                 }),
             ],
@@ -76,12 +75,14 @@ export class PeerNode {
     }
 
     protected async registerPeerDiscovery(): Promise<void> {
-        this.onNewPeerConnection(async event => {
-            Log.info(`[Network][Connection] Connected to ${event.detail.remoteAddr}/p2p/${event.detail.remotePeer.toString()}`);
-        });
+        // TODO: Fix too many logs
+        // this.onNewPeerConnection(async event => {
+        //     Log.info(`[Network][Connection] Connected to ${event.detail.remoteAddr}/p2p/${event.detail.remotePeer.toString()}`);
+        // });
 
         this.onPeerDiscovery(async event => {
-            Log.info(`[Network][Discovery] Discovered ${event.detail.id.toString()} through ${event.detail.multiaddrs}`);
+            // TODO: Fix too many logs
+            // Log.info(`[Network][Discovery] Discovered ${event.detail.id.toString()} through ${event.detail.multiaddrs}`);
             await this.addressBook.set(event.detail.id, event.detail.multiaddrs);
             await this.libp2p.dial(event.detail.id);
         });
@@ -209,6 +210,10 @@ export class PeerNode {
         for await (let handler of this.ensurePeerIsRunningHandlers) {
             handler();
         }
+
+        setInterval(() => {
+            console.dir(this.libp2p.metrics, { depth: 100});
+        }, 1e3);
     }
 
     async stop(): Promise<void> {
