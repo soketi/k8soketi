@@ -1,4 +1,4 @@
-import { PresenceMember, PresenceMemberInfo } from './handlers/pusherWebsocketsHandler';
+import { PresenceMember, PresenceMemberInfo } from './handlers/pusher-websockets-handler';
 import { Log } from './log';
 import { SentPusherMessage } from './message';
 import { WebSocket } from './websocket';

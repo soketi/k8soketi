@@ -1,11 +1,16 @@
 import ab2str from 'arraybuffer-to-string';
 import { App } from '../app-managers/app';
+import { AppManager } from '../app-managers/app-manager';
+import { CacheManager } from '../cache-managers/cache-manager';
 import { HttpRequest, HttpResponse } from 'uWebSockets.js';
 import { Log } from '../log';
+import { MetricsUtils } from '../utils/metrics-utils';
 import { PresenceChannelManager } from '../pusher-channels/presence-channel-manager';
+import { Prometheus } from '../prometheus';
 import { PusherMessage, uWebSocketMessage } from '../message';
+import { RateLimiter } from '../rate-limiters/rate-limiter';
 import { WebsocketsNode } from '../websocketsNode';
-import { WebSocket } from './../websocket';
+import { WebSocket } from '../websocket';
 import { WsUtils } from '../utils/ws-utils';
 
 export interface PresenceMemberInfo {
@@ -105,6 +110,8 @@ export class PusherWebsocketsHandler {
         if (ws.app.enableUserAuthentication) {
             ws.setUserAuthenticationTimeout(ws);
         }
+
+        Prometheus.newConnection(ws);
     }
 
     static async onMessage(ws: WebSocket, message: uWebSocketMessage, isBinary: boolean): Promise<any> {
@@ -132,6 +139,8 @@ export class PusherWebsocketsHandler {
                 return;
             }
         }
+
+        Prometheus.receivedWsMessage(ws.app.id, stringMessage);
 
         switch (message.event) {
             case 'pusher:ping': await this.handlePingMessage(ws, message); break;
@@ -240,7 +249,7 @@ export class PusherWebsocketsHandler {
             });
 
             if (WsUtils.isCachingChannel(channel)) {
-                // TODO: Implement this.sendMissedCacheIfExists(ws, channel);
+                await this.sendMissedCacheIfExists(ws, channel);
             }
 
             return;
@@ -287,7 +296,7 @@ export class PusherWebsocketsHandler {
         });
 
         if (WsUtils.isCachingChannel(channel)) {
-            // TODO: Implement this.sendMissedCacheIfExists(ws, channel);
+            await this.sendMissedCacheIfExists(ws, channel);
         }
     }
 
@@ -296,11 +305,121 @@ export class PusherWebsocketsHandler {
     }
 
     protected static async handleClientEvent(ws: WebSocket, message: PusherMessage): Promise<void> {
-        // TODO: Implement
+        let { event, data, channel } = message;
+
+        if (!ws.app.enableClientMessages) {
+            return await ws.sendJson({
+                event: 'pusher:error',
+                channel,
+                data: {
+                    code: 4301,
+                    message: `The app does not have client messaging enabled.`,
+                },
+            });
+        }
+
+        // Make sure the event name length is not too big.
+        if (event.length > ws.app.maxEventNameLength) {
+            return await ws.sendJson({
+                event: 'pusher:error',
+                channel,
+                data: {
+                    code: 4301,
+                    message: `Event name is too long. Maximum allowed size is ${ws.app.maxEventNameLength}.`,
+                },
+            });
+        }
+
+        let payloadSizeInKb = MetricsUtils.dataToKilobytes(message.data);
+
+        // Make sure the total payload of the message body is not too big.
+        if (payloadSizeInKb > parseFloat(ws.app.maxEventPayloadInKb as string)) {
+            return await ws.sendJson({
+                event: 'pusher:error',
+                channel,
+                data: {
+                    code: 4301,
+                    message: `The event data should be less than ${ws.app.maxEventPayloadInKb} KB.`,
+                },
+            });
+        }
+
+        let canBroadcast = await this.wsNode.namespace(ws.app.id).isInChannel(channel, ws.id);
+
+        if (!canBroadcast) {
+            return;
+        }
+
+        let response = await RateLimiter.consumeFrontendEventPoints(1, ws.app, ws);
+
+        if (!response.canContinue) {
+            return await ws.sendJson({
+                event: 'pusher:error',
+                channel,
+                data: {
+                    code: 4301,
+                    message: 'The rate limit for sending client events exceeded the quota.',
+                },
+            });
+        }
+
+        let userId = ws.presence.has(channel) ? ws.presence.get(channel).user_id : null;
+
+        let formattedMessage = {
+            event,
+            channel,
+            data,
+            ...userId ? { user_id: userId } : {},
+        };
+
+        this.wsNode.namespace(ws.app.id).broadcastMessage(channel, formattedMessage, ws.id);
     }
 
     protected static async handleSignin(ws: WebSocket, message: PusherMessage): Promise<void> {
-        // TODO: Implement
+        if (!ws.userAuthenticationTimeout) {
+            return;
+        }
+
+        let isValid = await this.signinTokenIsValid(ws, message.data.user_data, message.data.auth);
+
+        if (!isValid) {
+            return await ws.sendJsonAndClose({
+                event: 'pusher:error',
+                data: {
+                    code: 4009,
+                    message: 'Connection not authorized.',
+                },
+            }, 4009);
+        }
+
+        let decodedUser = JSON.parse(message.data.user_data);
+
+        if (!decodedUser.id) {
+            return await ws.sendJsonAndClose({
+                event: 'pusher:error',
+                data: {
+                    code: 4009,
+                    message: 'The returned user data must contain the "id" field.',
+                },
+            }, 4009);
+        }
+
+        ws.user = {
+            ...decodedUser,
+            ...{
+                id: decodedUser.id.toString(),
+            },
+        };
+
+        await ws.clearUserAuthenticationTimeout();
+        await this.wsNode.namespace(ws.app.id).addUser(ws);
+
+        this.wsNode.namespace(ws.app.id).addSocket(ws);
+
+        await ws.sendJson({
+            event: 'pusher:signin_success',
+            data: message.data,
+        });
     }
 
     protected static async attachDefaultDataToConnection(ws: WebSocket): Promise<void> {
@@ -337,6 +456,7 @@ export class PusherWebsocketsHandler {
                 ws.updatePingTimeout();
                 ws.send(JSON.stringify(data));
                 Log.info(`[Pusher][WebSockets] Sent message to ${ws.id}: ${JSON.stringify(data)}`);
+                Prometheus.sentWsMessage(data, ws);
             } catch (e) {
                 Log.warning(`[Pusher][WebSockets] ${e}`);
             }
@@ -368,7 +488,29 @@ export class PusherWebsocketsHandler {
         return `${randomNumber(min, max)}.${randomNumber(min, max)}`;
     }
 
-    protected static checkForValidApp(ws: WebSocket): Promise<App|null> {
-        return this.wsNode.appManager.findByKey(ws.appKey);
+    protected static async checkForValidApp(ws: WebSocket): Promise<App|null> {
+        return AppManager.findByKey(ws.appKey);
+    }
+
+    protected static async sendMissedCacheIfExists(ws: WebSocket, channel: string): Promise<void> {
+        let cachedEvent = await CacheManager.get(`app:${ws.app.id}:channel:${channel}:cache_miss`);
+
+        if (cachedEvent) {
+            await ws.sendJson({
+                event: 'pusher:cache_miss',
+                channel,
+                data: cachedEvent,
+            });
+        } else {
+            // TODO: Implement webhooks this.server.webhookSender.sendCacheMissed(ws.app, channel);
+        }
+    }
+
+    protected static async signinTokenIsValid(ws: WebSocket, userData: string, signatureToCheck: string): Promise<boolean> {
+        return (await this.signinTokenForUserData(ws, userData)) === signatureToCheck;
+    }
+
+    protected static async signinTokenForUserData(ws: WebSocket, userData: string): Promise<string> {
+        return `${ws.app.key}:${ws.app.signString(`${ws.id}::user::${userData}`)}`;
     }
 }

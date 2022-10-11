@@ -5,10 +5,13 @@ import { CacheManager } from '../cache-managers/cache-manager';
 import { Log } from '../log';
 import { Options } from '../options';
 
-export class AppManager implements AppManagerInterface {
-    driver: AppManagerInterface;
+export class AppManager {
+    static driver: AppManagerInterface;
+    static options: Options;
 
-    constructor(protected options: Options, public cacheManager: CacheManager) {
+    static async initialize(options: Options): Promise<void> {
+        this.options = options;
+
         if (options.websockets.appManagers.driver === 'array') {
             this.driver = new ArrayAppManager(options);
         } else {
@@ -16,12 +19,12 @@ export class AppManager implements AppManagerInterface {
         }
     }
 
-    async findById(id: string): Promise<App|null> {
+    static async findById(id: string): Promise<App|null> {
         if (!this.options.websockets.appManagers.cache.enabled) {
             return this.driver.findById(id);
         }
 
-        let appFromCache = await this.cacheManager.get(`app:${id}`);
+        let appFromCache = await CacheManager.get(`app:${id}`);
 
         if (appFromCache) {
             return new App(JSON.parse(appFromCache), this.options);
@@ -29,7 +32,7 @@ export class AppManager implements AppManagerInterface {
 
         let app = await this.driver.findById(id);
 
-        await this.cacheManager.set(
+        await CacheManager.set(
             `app:${id}`,
             app ? app.toJson() : app,
             this.options.websockets.appManagers.cache.ttl,
@@ -38,12 +41,12 @@ export class AppManager implements AppManagerInterface {
         return app;
     }
 
-    async findByKey(key: string): Promise<App|null> {
+    static async findByKey(key: string): Promise<App|null> {
         if (!this.options.websockets.appManagers.cache.enabled) {
             return this.driver.findByKey(key);
         }
 
-        let appFromCache = await this.cacheManager.get(`app:${key}`);
+        let appFromCache = await CacheManager.get(`app:${key}`);
 
         if (appFromCache) {
             return new App(JSON.parse(appFromCache), this.options);
@@ -51,7 +54,7 @@ export class AppManager implements AppManagerInterface {
 
         let app = await this.driver.findByKey(key);
 
-        await this.cacheManager.set(
+        await CacheManager.set(
             `app:${key}`,
             app ? app.toJson() : app,
             this.options.websockets.appManagers.cache.ttl,
@@ -60,7 +63,7 @@ export class AppManager implements AppManagerInterface {
         return app;
     }
 
-    async getAppSecret(id: string): Promise<string|null> {
+    static async getAppSecret(id: string): Promise<string|null> {
         return this.driver.getAppSecret(id);
     }
 }

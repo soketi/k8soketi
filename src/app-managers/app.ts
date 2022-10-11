@@ -172,17 +172,16 @@ export class App implements AppInterface {
             params['body_md5'] = pusherUtil.getMD5(res.rawBody);
         }
 
-        return this.requestSigningToken(
+        return this.signString([
             res.method,
             res.url,
             pusherUtil.toOrderedArray(params).join('&'),
-        );
+        ].join("\n"));
     }
 
-    protected requestSigningToken(method: string, path: string, params: string): string {
+    signString(str: string): string {
         let token = new (Pusher as any).Token(this.key, this.secret);
-
-        return token.sign([method, path, params].join("\n"));
+        return token.sign(str);
     }
 
     protected extractFromPassedKeys(app: { [key: string]: any; }, parameters: string[], defaultValue: any): any {

@@ -42,8 +42,10 @@
     "eslint": "^8.24.0",
     "it-pipe": "^2.0.4",
     "libp2p": "^0.39.2",
+    "prom-client": "^14.1.0",
     "pusher": "^5.1.1-beta",
     "query-string": "^7.1.1",
+    "rate-limiter-flexible": "^2.3.11",
     "ts-node": "^10.9.1",
     "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js.git#v20.10.0"
   },

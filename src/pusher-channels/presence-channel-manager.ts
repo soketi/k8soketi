@@ -1,6 +1,6 @@
 import { JoinResponse, LeaveResponse } from './public-channel-manager';
 import { MetricsUtils } from '../utils/metrics-utils';
-import { PresenceMember } from '../handlers/pusherWebsocketsHandler';
+import { PresenceMember } from '../handlers/pusher-websockets-handler';
 import { PrivateChannelManager } from './private-channel-manager';
 import { PusherMessage } from '../message';
 import { WebSocket } from './../websocket';

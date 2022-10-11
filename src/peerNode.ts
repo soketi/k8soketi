@@ -37,7 +37,7 @@ export class PeerNode {
     protected listenersByTopic: Map<string, Set<(message: { [key: string]: any; }) => void>> = new Map();
     closing = false;
 
-    constructor(protected options: Options) {
+    constructor(public options: Options) {
         //
     }
 
@@ -68,6 +68,9 @@ export class PeerNode {
                     broadcast: true,
                 }),
             ],
+            metrics: {
+                enabled: this.options.metrics.enabled,
+            },
         });
 
         await this.registerPeerDiscovery();
@@ -148,6 +151,8 @@ export class PeerNode {
 
     async handleRequest({ onRequest, action, version = '1' }: RequestHandlerData): Promise<void> {
         await this.libp2p.handle(`/v${version}/${action}`, async ({ connection, stream }) => {
+            this.watchStreamForMetrics(connection.remotePeer, stream, `/v${version}/${action}`);
+
             await pipe(stream, async (source) => {
                 for await (let data of source) {
                     let stringData = toString(data.subarray());
@@ -171,10 +176,11 @@ export class PeerNode {
         return new Promise(async resolve => {
             try {
                 let stream = await this.libp2p.dialProtocol(peerId, `/v${version}/${action}`);
-
                 let requestData = fromString(JSON.stringify(data));
 
                 Log.info(`[Request][/v${version}/${action}] Making request: ${requestData}`);
+
+                this.watchStreamForMetrics(peerId, stream, `/v${version}/${action}`);
 
                 pipe([requestData], stream, async (source) => {
                     for await (let data of source) {
@@ -200,8 +206,20 @@ export class PeerNode {
         return this.libp2p.pubsub.getSubscribers(topic);
     }
 
+    watchStreamForMetrics(remotePeer: PeerId, stream: any, protocol: string): void {
+        this.libp2p.metrics.trackStream({
+            remotePeer,
+            stream,
+            protocol,
+        });
+    }
+
     get addressBook() {
         return this.libp2p.peerStore.addressBook;
+    }
+
+    get metrics() {
+        return this.libp2p.metrics;
     }
 
     async start(): Promise<void> {
@@ -210,10 +228,6 @@ export class PeerNode {
         for await (let handler of this.ensurePeerIsRunningHandlers) {
             handler();
         }
-
-        setInterval(() => {
-            console.dir(this.libp2p.metrics, { depth: 100});
-        }, 1e3);
     }
 
     async stop(): Promise<void> {

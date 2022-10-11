@@ -1,5 +1,5 @@
 import { App } from './app-managers/app';
-import { PresenceMember, User } from './handlers/pusherWebsocketsHandler';
+import { PresenceMember, User } from './handlers/pusher-websockets-handler';
 import { WebSocket as BaseWebSocket } from 'uWebSockets.js';
 
 export interface WebSocket extends BaseWebSocket {

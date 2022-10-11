@@ -14,8 +14,11 @@ export class ExtractJsonBodyMiddleware extends MiddlewareClass {
             return HttpUtils.badResponse(res, 'The body is not JSON-encoded.');
         }
 
-        // TODO: Check for API request size limit.
-        // Return Entity too large.
+        let maxPayloadSizeInMb = this.wsNode.options.websockets.http.maxPayloadSizeInMb;
+
+        if (maxPayloadSizeInMb) {
+            return HttpUtils.entityTooLargeResponse(res, `The request cannot be greater than ${maxPayloadSizeInMb}MB.`);
+        }
 
         return res;
     }

@@ -1,13 +1,11 @@
 import { App } from '../app-managers/app';
-import { CorsMiddleware } from '../middleware/cors-middleware';
-import { HttpRequest } from 'uWebSockets.js';
+import { CacheManager } from '../cache-managers/cache-manager';
+import { HttpHandler } from './http-handler';
 import { HttpResponse, HttpUtils } from '../utils/http-utils';
-import { InitializeResponseMiddleware } from '../middleware/initialize-response-middleware';
-import { MiddlewareClass } from '../middleware/middleware-class';
+import { MetricsUtils } from '../utils/metrics-utils';
 import { PusherApiMessage, SentPusherMessage } from '../message';
 import { WsUtils } from '../utils/ws-utils';
-import { WebsocketsNode } from '../websocketsNode';
-import { MetricsUtils } from '../utils/metrics-utils';
+import v8 from 'v8';
 
 export interface ChannelResponse {
     subscription_count: number;
@@ -21,40 +19,23 @@ export interface MessageCheckError {
     code: number;
 }
 
-export class PusherHttpApiHandler {
-    static wsNode: WebsocketsNode;
-
-    static async serve(fn: string, res: HttpResponse, req: HttpRequest, middleware: MiddlewareClass[] = [], namedParams: string[] = []): Promise<HttpResponse> {
-        await HttpUtils.applyMiddleware(res, [
-            new InitializeResponseMiddleware(this.wsNode),
-            new CorsMiddleware(this.wsNode),
-        ]);
-
-        await HttpUtils.extractRequestDetails(res, req, namedParams)
-        await HttpUtils.applyMiddleware(res, middleware);
-
-        return this[fn](res, middleware);
-    }
-
-    static async healthCheck(res: HttpResponse, middleware: MiddlewareClass[]): Promise<HttpResponse> {
+export class PusherHttpApiHandler extends HttpHandler {
+    static async healthCheck(res: HttpResponse): Promise<HttpResponse> {
         return HttpUtils.send(res, 'OK');
     }
 
-    static async ready(res: HttpResponse, middleware: MiddlewareClass[]): Promise<HttpResponse> {
+    static async ready(res: HttpResponse): Promise<HttpResponse> {
         return this.wsNode.closing
             ? HttpUtils.serverErrorResponse(res, 'The server is closing. Choose another server. :)')
             : HttpUtils.send(res, 'OK');
     }
 
-    static async acceptTraffic(res: HttpResponse, middleware: MiddlewareClass[]): Promise<HttpResponse> {
+    static async acceptTraffic(res: HttpResponse): Promise<HttpResponse> {
         if (this.wsNode.closing) {
             return HttpUtils.serverErrorResponse(res, 'The server is closing. Choose another server. :)');
         }
 
-        return res;
-
-        // TODO: Implement
-        /* let threshold = this.server.options.httpApi.acceptTraffic.memoryThreshold;
+        let threshold = this.wsNode.options.websockets.http.acceptTraffic.memoryThreshold;
 
         let {
             rss,
@@ -68,19 +49,13 @@ export class PusherHttpApiHandler {
         let percentUsage = (usedSize / totalSize) * 100;
 
         if (threshold < percentUsage) {
-            return this.serverErrorResponse(res, 'Low on memory here. Choose another server. :)');
+            return HttpUtils.serverErrorResponse(res, 'Low on memory here. Choose another server. :)');
         }
 
-        this.sendJson(res, {
-            memory: {
-                usedSize,
-                totalSize,
-                percentUsage,
-            },
-        }); */
+        return HttpUtils.send(res, 'OK');
     }
 
-    static async channels(res: HttpResponse, middleware: MiddlewareClass[]): Promise<HttpResponse> {
+    static async channels(res: HttpResponse): Promise<HttpResponse> {
         let channels = await this.wsNode.namespace(res.params.appId).getChannelsWithSocketsCount();
 
         let response: { [channel: string]: ChannelResponse } = [...channels].reduce((channels, [channel, connections]) => {
@@ -104,7 +79,7 @@ export class PusherHttpApiHandler {
         return HttpUtils.sendJson(res, { channels: response });
     }
 
-    static async channel(res: HttpResponse, middleware: MiddlewareClass[]): Promise<HttpResponse> {
+    static async channel(res: HttpResponse): Promise<HttpResponse> {
         let response: ChannelResponse;
 
         let socketsCount = await this.wsNode
@@ -138,7 +113,7 @@ export class PusherHttpApiHandler {
         return HttpUtils.sendJson(res, response);
     }
 
-    static async channelUsers(res: HttpResponse, middleware: MiddlewareClass[]): Promise<HttpResponse> {
+    static async channelUsers(res: HttpResponse): Promise<HttpResponse> {
         if (!WsUtils.isPresenceChannel(res.params.channel)) {
             return HttpUtils.badResponse(res, 'The channel must be a presence channel.');
         }
@@ -156,7 +131,7 @@ export class PusherHttpApiHandler {
         });
     }
 
-    static async events(res: HttpResponse, middleware: MiddlewareClass[]): Promise<HttpResponse> {
+    static async events(res: HttpResponse): Promise<HttpResponse> {
         try {
             let message = await this.checkMessageToBroadcast(res.body as PusherApiMessage, res.app);
 
@@ -172,7 +147,7 @@ export class PusherHttpApiHandler {
         }
     }
 
-    static async batchEvents(res: HttpResponse, middleware: MiddlewareClass[]): Promise<HttpResponse> {
+    static async batchEvents(res: HttpResponse): Promise<HttpResponse> {
         let batch = res.body.batch as PusherApiMessage[];
 
         // Make sure the batch size is not too big.
@@ -199,14 +174,9 @@ export class PusherHttpApiHandler {
         };
     }
 
-    static async terminateUserConnections(res: HttpResponse, middleware: MiddlewareClass[]): Promise<HttpResponse> {
+    static async terminateUserConnections(res: HttpResponse): Promise<HttpResponse> {
         this.wsNode.namespace(res.app.id).terminateUserConnections(res.params.userId);
         return HttpUtils.sendJson(res, { ok: true });
-    }
-
-    static async notFound(res: HttpResponse, middleware: MiddlewareClass[]): Promise<HttpResponse> {
-        res.writeStatus('404 Not Found');
-        return HttpUtils.send(res, '', '404 Not Found');
     }
 
     protected static async checkMessageToBroadcast(message: PusherApiMessage, app: App): Promise<PusherApiMessage> {
@@ -266,14 +236,13 @@ export class PusherHttpApiHandler {
 
             this.wsNode.namespace(appId).broadcastMessage(channel, msg, message.socket_id);
 
-            // TODO: Cache message
-            /* if (WsUtils.isCachingChannel(channel)) {
-                this.server.cacheManager.set(
+            if (WsUtils.isCachingChannel(channel)) {
+                await CacheManager.set(
                     `app:${appId}:channel:${channel}:cache_miss`,
                     JSON.stringify({ event: msg.event, data: msg.data }),
-                    this.server.options.channelLimits.cacheTtl,
+                    this.wsNode.options.websockets.limits.channels.cacheTtl,
                 );
-            } */
+            }
         }
     }
 }

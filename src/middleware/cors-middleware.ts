@@ -3,23 +3,7 @@ import { MiddlewareClass } from './middleware-class';
 
 export class CorsMiddleware extends MiddlewareClass {
     async handle(res: HttpResponse): Promise<HttpResponse> {
-        // TODO: Custom CORS
-        let cors = {
-            credentials: true,
-            origin: ['*'],
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: [
-                'Origin',
-                'Content-Type',
-                'X-Auth-Token',
-                'X-Requested-With',
-                'Accept',
-                'Authorization',
-                'X-CSRF-TOKEN',
-                'XSRF-TOKEN',
-                'X-Socket-Id',
-            ],
-        };
+        let cors = this.wsNode.options.cors;
 
         res.writeHeader('Access-Control-Allow-Origin', cors.origin.join(', '));
         res.writeHeader('Access-Control-Allow-Methods', cors.methods.join(', '));

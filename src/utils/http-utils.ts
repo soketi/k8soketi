@@ -3,6 +3,7 @@ import { App } from '../app-managers/app';
 import { HttpRequest, HttpResponse as BaseHttpResponse, RecognizedString } from 'uWebSockets.js';
 import { Log } from '../log';
 import { MiddlewareClass } from '../middleware/middleware-class';
+import { Prometheus } from '../prometheus';
 import queryString from 'query-string';
 
 export interface HttpResponse extends BaseHttpResponse {
@@ -61,7 +62,12 @@ export class HttpUtils {
     }
 
     static async sendJson(res: HttpResponse, data: any, status: RecognizedString = '200 OK'): Promise<HttpResponse> {
+
         try {
+            if (res.app && res.rawBody) {
+                Prometheus.apiMessage(res.app.id, res.rawBody, data);
+            }
+
             return res.writeStatus(status)
                 .writeHeader('Content-Type', 'application/json')
                 .end(JSON.stringify(data), true);
@@ -73,6 +79,10 @@ export class HttpUtils {
 
     static async send(res: HttpResponse, data: RecognizedString, status: RecognizedString = '200 OK'): Promise<HttpResponse> {
         try {
+            if (res.app && res.rawBody) {
+                Prometheus.apiMessage(res.app.id, res.rawBody, data);
+            }
+
             return res.writeStatus(status).end(data, true);
         } catch (e) {
             Log.warning(`[HTTP][IP: ${res.ip}] Response could not be sent: ${e}`);
@@ -104,11 +114,7 @@ export class HttpUtils {
         return this.sendJson(res, { error, code: 500 }, '500 Internal Server Error');
     }
 
-    static async getSignedToken(res: HttpResponse): Promise<string> {
-        return res.app.signingTokenFromRequest(res);
-    }
-
     static async signatureIsValid(res: HttpResponse): Promise<boolean> {
-        return (await this.getSignedToken(res)) === res.query.auth_signature;
+        return res.app.signingTokenFromRequest(res) === res.query.auth_signature;
     }
 }

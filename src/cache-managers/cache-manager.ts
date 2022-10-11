@@ -3,10 +3,13 @@ import { Log } from '../log';
 import { MemoryCacheManager } from './memory-cache-manager';
 import { Options } from '../options';
 
-export class CacheManager implements CacheManagerInterface {
-    driver: CacheManagerInterface;
+export class CacheManager {
+    static driver: CacheManagerInterface;
+    static options: Options;
 
-    constructor(protected options: Options) {
+    static async initialize(options: Options) {
+        this.options = options;
+
         if (options.websockets.cache.driver === 'memory') {
             this.driver = new MemoryCacheManager(options);
         } else {
@@ -14,19 +17,20 @@ export class CacheManager implements CacheManagerInterface {
         }
     }
 
-    has(key: string): Promise<boolean> {
+    static async has(key: string): Promise<boolean> {
         return this.driver.has(key);
     }
 
-    get(key: string): Promise<any> {
+    static async get(key: string): Promise<any> {
         return this.driver.get(key);
     }
 
-    set(key: string, value: any, ttlSeconds: number): Promise<any> {
+    static async set(key: string, value: any, ttlSeconds: number): Promise<any> {
         return this.driver.set(key, value, ttlSeconds);
     }
 
-    disconnect(): Promise<void> {
+    // TODO: Call this function
+    static async disconnect(): Promise<void> {
         return this.driver.disconnect();
     }
 }

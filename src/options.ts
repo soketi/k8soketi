@@ -1,9 +1,22 @@
 import { AppInterface } from "./app-managers/app";
 
 export interface Options {
+    cors: {
+        credentials: boolean;
+        origin: string[];
+        methods: string[];
+        allowedHeaders: string[];
+    };
     logs: {
         verbose: boolean;
         timestamps: boolean;
+    };
+    metrics: {
+        enabled: boolean;
+        server: {
+            host: string;
+            port: number;
+        };
     };
     websockets: {
         appManagers: {
@@ -31,6 +44,12 @@ export interface Options {
                 port: number;
             };
         };
+        http: {
+            acceptTraffic: {
+                memoryThreshold: number;
+            };
+            maxPayloadSizeInMb: number;
+        };
         limits: {
             channels: {
                 maxNameLength: number;
@@ -46,6 +65,9 @@ export interface Options {
                 maxMembersPerChannel: number;
                 maxMemberSizeInKb: number;
             };
+        };
+        rateLimiters: {
+            driver: string;
         };
         server: {
             host: string;

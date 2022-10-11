@@ -1,5 +1,6 @@
 import * as dot from 'dot-wild';
 import { Log } from './log';
+import { MetricsNode } from './metricsNode';
 import { Options } from './options';
 import { PeerNode } from './peerNode';
 import { WebsocketsNode } from './websocketsNode';
@@ -7,11 +8,35 @@ import { WebsocketsNode } from './websocketsNode';
 export default class Server {
     peerNode: PeerNode;
     websocketsNode: WebsocketsNode;
+    metricsNode: MetricsNode;
 
     protected options: Options = {
+        cors: {
+            credentials: true,
+            origin: ['*'],
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+            allowedHeaders: [
+                'Origin',
+                'Content-Type',
+                'X-Auth-Token',
+                'X-Requested-With',
+                'Accept',
+                'Authorization',
+                'X-CSRF-TOKEN',
+                'XSRF-TOKEN',
+                'X-Socket-Id',
+            ],
+        },
         logs: {
             verbose: false,
             timestamps: false,
+        },
+        metrics: {
+            enabled: false,
+            server: {
+                host: '127.0.0.1',
+                port: 9601,
+            },
         },
         websockets: {
             appManagers: {
@@ -52,6 +77,12 @@ export default class Server {
                     port: 53,
                 },
             },
+            http: {
+                acceptTraffic: {
+                    memoryThreshold: 90,
+                },
+                maxPayloadSizeInMb: 100,
+            },
             limits: {
                 channels: {
                     maxNameLength: 200,
@@ -68,6 +99,9 @@ export default class Server {
                     maxMemberSizeInKb: 2,
                 },
             },
+            rateLimiters: {
+                driver: 'local',
+            },
             server: {
                 host: '0.0.0.0',
                 port: 6001,
@@ -80,6 +114,7 @@ export default class Server {
 
         this.peerNode = new PeerNode(this.options);
         this.websocketsNode = new WebsocketsNode(this.options);
+        this.metricsNode = new MetricsNode(this.options);
 
         if (this.options.logs.verbose) {
             Log.enableVerbosity();
@@ -94,8 +129,13 @@ export default class Server {
         Log.info('🤖 Initializing the peer node...', true);
         await this.peerNode.initialize();
 
-        Log.info('🤖 Initializing the WebSockets node...', true);
+        Log.info('🤖 Initializing the WebSockets server...', true);
         await this.websocketsNode.initialize(this.peerNode);
+
+        if (this.options.metrics.enabled) {
+            Log.info('📈 Initializing the Metrics server...', true);
+            await this.metricsNode.initialize(this.peerNode, this.websocketsNode);
+        }
 
         // Register the exit handlers before the starts occur.
         await this.registerExitHandlers();
@@ -103,8 +143,13 @@ export default class Server {
         Log.info('🐝 Starting the peer node...', true);
         await this.peerNode.start();
 
-        Log.info('🐝 Starting the WebSockets node...', true);
+        Log.info('🐝 Starting the WebSockets server...', true);
         await this.websocketsNode.start();
+
+        if (this.options.metrics.enabled) {
+            Log.info('🐝 Starting the Metrics server...', true);
+            await this.metricsNode.start();
+        }
 
         Log.success('👍 The node is now operating!', true);
     }
@@ -113,8 +158,13 @@ export default class Server {
         Log.info('🛑 Closing the peer node...', true);
         await this.peerNode.stop();
 
-        Log.info('🛑 Closing the WebSockets node...', true);
+        Log.info('🛑 Closing the WebSockets server...', true);
         await this.websocketsNode.stop();
+
+        if (this.options.metrics.enabled) {
+            Log.info('🛑 Closing the Metrics server...', true);
+            await this.websocketsNode.stop();
+        }
     }
 
     protected overrideOptions(optionsOverrides: { [key: string]: any; }): void {

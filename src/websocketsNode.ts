@@ -1,8 +1,12 @@
+import { AppApiBatchBroadcastRateLimiter } from './middleware/app-api-batch-broadcast-rate-limiter';
+import { AppApiBroadcastRateLimiter } from './middleware/app-api-broadcast-rate-limiter';
+import { AppApiReadRateLimiter } from './middleware/app-api-read-rate-limiter';
 import { AppAuthenticationMiddleware } from './middleware/app-authentication-middleware';
 import { AppManager } from './app-managers/app-manager';
 import { AppRetrievalMiddleware } from './middleware/app-retrieval-middleware';
 import { CacheManager } from './cache-managers/cache-manager';
 import { EncryptedPrivateChannelManager } from './pusher-channels/encrypted-private-channel-manager';
+import { ExtractJsonBodyMiddleware } from './middleware/extract-json-body-middleware';
 import { HttpRequest, HttpResponse, TemplatedApp } from 'uWebSockets.js';
 import { Log } from './log';
 import { Namespace } from './namespace';
@@ -10,14 +14,15 @@ import { Options } from './options';
 import { PeerNode } from './peerNode';
 import { PresenceChannelManager } from './pusher-channels/presence-channel-manager';
 import { PrivateChannelManager } from './pusher-channels/private-channel-manager';
+import { Prometheus } from './prometheus';
 import { PublicChannelManager } from './pusher-channels/public-channel-manager';
 import { PubsubAppMessage, uWebSocketMessage } from './message';
-import { PusherHttpApiHandler } from './handlers/pusherHttpApiHandler';
-import { PusherWebsocketsHandler } from './handlers/pusherWebsocketsHandler';
+import { PusherHttpApiHandler } from './handlers/pusher-http-api-handler';
+import { PusherWebsocketsHandler } from './handlers/pusher-websockets-handler';
+import { RateLimiter } from './rate-limiters/rate-limiter';
 import uWS from 'uWebSockets.js';
 import { WebSocket } from './websocket';
 import { WsUtils } from './utils/ws-utils';
-
 export class WebsocketsNode {
     protected app: TemplatedApp;
     protected process: uWS.us_listen_socket;
@@ -37,7 +42,7 @@ export class WebsocketsNode {
     protected encryptedPrivateChannelManager: EncryptedPrivateChannelManager;
     protected presenceChannelManager: PresenceChannelManager;
 
-    constructor(protected options: Options) {
+    constructor(public options: Options) {
         this.publicChannelManager = new PublicChannelManager(this);
         this.privateChannelManager = new PrivateChannelManager(this);
         this.encryptedPrivateChannelManager = new EncryptedPrivateChannelManager(this);
@@ -52,8 +57,7 @@ export class WebsocketsNode {
         PusherHttpApiHandler.wsNode = this;
 
         await this.registerPusherRoutes();
-        await this.registerCacheManager();
-        await this.registerAppManager();
+        await this.bootstrapManagers();
         await this.registerProtocols();
     }
 
@@ -123,7 +127,16 @@ export class WebsocketsNode {
                 if (response instanceof Map || response instanceof Set) {
                     responseString = JSON.stringify([...response]);
                 } else if (typeof response === 'number') {
-                    responseString = response.toString();
+                    // If int === float, it means the number is integer.
+                    // If not, it's float. Usually, this could have been
+                    // kept at the float level, but let's not mix types. :)
+                    let potentialNumber = response.toString();
+                    let potentialInteger = parseInt(potentialNumber);
+                    let potentialFloat = parseFloat(potentialNumber);
+
+                    responseString = potentialInteger === potentialFloat
+                        ? potentialInteger
+                        : potentialFloat;
                 }
 
                 return responseString;
@@ -139,6 +152,8 @@ export class WebsocketsNode {
         }
 
         await ws.clearPingTimeout();
+
+        Prometheus.newDisconnection(ws);
     }
 
     async unsubscribeFromAllChannels(ws: WebSocket, closing = true): Promise<void> {
@@ -231,8 +246,8 @@ export class WebsocketsNode {
     protected async registerPusherRoutes(): Promise<void> {
         this.app.ws('/app/:key', {
             idleTimeout: 120,
-            maxBackpressure: 1024 * 1024,
-            maxPayloadLength: 100 * 1024 * 1024,
+            maxBackpressure: 1024 * 1024, // TODO: Configure
+            maxPayloadLength: 100 * 1024 * 1024, // TODO: Configure
             open: async (ws: WebSocket) => {
                 return await PusherWebsocketsHandler.onOpen(ws);
             },
@@ -259,46 +274,45 @@ export class WebsocketsNode {
             return await PusherHttpApiHandler.serve('acceptTraffic', res, req);
         });
 
-        // TODO: Implement
-        // this.app.get('/metrics', async (res, req) => await PusherHttpApiHandler.metrics(res));
-
         this.app.get('/apps/:appId/channels', async (res, req) => {
-            // TODO: Rate limiting for reads
             return await PusherHttpApiHandler.serve('channels', res, req, [
                 new AppRetrievalMiddleware(this),
                 new AppAuthenticationMiddleware(this),
+                new AppApiReadRateLimiter(this),
             ], ['appId']);
         });
 
         this.app.get('/apps/:appId/channels/:channelName', async (res, req) => {
-            // TODO: Rate limiting for reads
             return await PusherHttpApiHandler.serve('channel', res, req, [
                 new AppRetrievalMiddleware(this),
                 new AppAuthenticationMiddleware(this),
+                new AppApiReadRateLimiter(this),
             ], ['appId', 'channelName']);
         });
 
         this.app.get('/apps/:appId/channels/:channelName/users', async (res, req) => {
-            // TODO: Rate limiting for reads
             return await PusherHttpApiHandler.serve('channelUsers', res, req, [
                 new AppRetrievalMiddleware(this),
                 new AppAuthenticationMiddleware(this),
+                new AppApiReadRateLimiter(this),
             ], ['appId', 'channelName']);
         });
 
         this.app.post('/apps/:appId/events', async (res, req) => {
-            // TODO: Rate limiting for writes
             return await PusherHttpApiHandler.serve('events', res, req, [
+                new ExtractJsonBodyMiddleware(this),
                 new AppRetrievalMiddleware(this),
                 new AppAuthenticationMiddleware(this),
+                new AppApiBroadcastRateLimiter(this),
             ], ['appId']);
         });
 
         this.app.post('/apps/:appId/batch_events', async (res, req) => {
-            // TODO: Rate limiting for writes
             return await PusherHttpApiHandler.serve('batchEvents', res, req, [
+                new ExtractJsonBodyMiddleware(this),
                 new AppRetrievalMiddleware(this),
                 new AppAuthenticationMiddleware(this),
+                new AppApiBatchBroadcastRateLimiter(this),
             ], ['appId']);
         });
 
@@ -314,12 +328,10 @@ export class WebsocketsNode {
         });
     }
 
-    protected async registerCacheManager(): Promise<void> {
-        this.cacheManager = new CacheManager(this.options);
-    }
-
-    protected async registerAppManager(): Promise<void> {
-        this.appManager = new AppManager(this.options, this.cacheManager);
+    protected async bootstrapManagers(): Promise<void> {
+        await RateLimiter.initialize(this.options);
+        await CacheManager.initialize(this.options);
+        await AppManager.initialize(this.options);
     }
 
     namespace(appId: string): Namespace {
