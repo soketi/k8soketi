@@ -45,7 +45,7 @@
     "colors": "^1.4.0",
     "commander": "^9.4.0",
     "dot-wild": "^3.0.1",
-    "eslint": "^8.24.0",
+    "eslint": "^8.25.0",
     "it-pipe": "^2.0.4",
     "libp2p": "^0.39.2",
     "prom-client": "^14.1.0",
