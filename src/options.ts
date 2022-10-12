@@ -66,12 +66,21 @@ export interface Options {
                 maxMemberSizeInKb: number;
             };
         };
+        queueManagers: {
+            driver: 'sync';
+        };
         rateLimiters: {
             driver: string;
         };
         server: {
             host: string;
             port: number;
+        };
+        webhooks: {
+            batching: {
+                enabled: boolean;
+                duration: number;
+            };
         };
     };
 }

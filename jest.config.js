@@ -1,4 +1,4 @@
-module.exports = {
+export default {
     transform: {
         '^.+\\.tsx?$': 'ts-jest',
     },
@@ -6,6 +6,7 @@ module.exports = {
     testTimeout: 20 * 1000,
     collectCoverage: true,
     maxWorkers: 1,
+    testRunner: 'jest-circus/runner',
     globals: {
         'ts-jest': {
             isolatedModules: true,

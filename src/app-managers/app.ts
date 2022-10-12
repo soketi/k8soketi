@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import { HttpResponse } from 'uWebSockets.js';
 import { Lambda } from 'aws-sdk';
 import { Options } from '../options';
@@ -182,6 +183,12 @@ export class App implements AppInterface {
     signString(str: string): string {
         let token = new (Pusher as any).Token(this.key, this.secret);
         return token.sign(str);
+    }
+
+    hmac(str: string): string {
+        return createHmac('sha256', this.secret)
+            .update(str)
+            .digest('hex');
     }
 
     protected extractFromPassedKeys(app: { [key: string]: any; }, parameters: string[], defaultValue: any): any {

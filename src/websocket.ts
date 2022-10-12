@@ -16,7 +16,7 @@ export interface WebSocket extends BaseWebSocket {
 
     sendJson?(data: { [key: string]: any; }): Promise<void>;
     sendJsonAndClose?(data: { [key: string]: any; }, code: number): Promise<void>;
-    updatePingTimeout(): Promise<void>;
-    clearPingTimeout(): Promise<void>;
-    clearUserAuthenticationTimeout(): Promise<void>;
+    updatePingTimeout?(): Promise<void>;
+    clearPingTimeout?(): Promise<void>;
+    clearUserAuthenticationTimeout?(): Promise<void>;
 }

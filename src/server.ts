@@ -10,7 +10,7 @@ export default class Server {
     websocketsNode: WebsocketsNode;
     metricsNode: MetricsNode;
 
-    protected options: Options = {
+    options: Options = {
         cors: {
             credentials: true,
             origin: ['*'],
@@ -99,12 +99,21 @@ export default class Server {
                     maxMemberSizeInKb: 2,
                 },
             },
+            queueManagers: {
+                driver: 'sync',
+            },
             rateLimiters: {
                 driver: 'local',
             },
             server: {
                 host: '0.0.0.0',
                 port: 6001,
+            },
+            webhooks: {
+                batching: {
+                    enabled: false,
+                    duration: 1e3,
+                },
             },
         },
     };

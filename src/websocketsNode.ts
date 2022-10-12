@@ -18,11 +18,14 @@ import { Prometheus } from './prometheus';
 import { PublicChannelManager } from './pusher-channels/public-channel-manager';
 import { PubsubAppMessage, uWebSocketMessage } from './message';
 import { PusherHttpApiHandler } from './handlers/pusher-http-api-handler';
+import { PusherWebhookSender } from './webhook-sender/pusher-webhook-sender';
 import { PusherWebsocketsHandler } from './handlers/pusher-websockets-handler';
+import { QueueManager } from './queues/queue-manager';
 import { RateLimiter } from './rate-limiters/rate-limiter';
 import uWS from 'uWebSockets.js';
 import { WebSocket } from './websocket';
 import { WsUtils } from './utils/ws-utils';
+
 export class WebsocketsNode {
     protected app: TemplatedApp;
     protected process: uWS.us_listen_socket;
@@ -332,6 +335,8 @@ export class WebsocketsNode {
         await RateLimiter.initialize(this.options);
         await CacheManager.initialize(this.options);
         await AppManager.initialize(this.options);
+        await QueueManager.initialize(this.options);
+        await PusherWebhookSender.initialize(this.options);
     }
 
     namespace(appId: string): Namespace {

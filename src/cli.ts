@@ -27,6 +27,7 @@ import { program } from 'commander';
         .option('--app-manager <appManager>', 'The app manager driver to use. (available: "array")', 'array')
         .option('--app-manager-cache', 'Allow app managers to cache app responses.', false)
         .option('--app-manager-cache-ttl <appManagerCacheTtl>', 'The TTL of cache for app responses.', '-1')
+        .option('--queue-manager <queueManager>', 'The queue manager driver to use. (available: "sync")', 'sync')
         .option('--max-channel-name-length <maxChannelNameLength>', 'The default limit of max. characters for a  channel name.', '200')
         .option('--max-channels-on-broadcast <maxChannelsAtOnce>', 'The default limit of max. channels that can be passed in a single broadcast command.', '100')
         .option('--max-event-name-length <maxEventLengthName>', 'The default limit of max. characters for an event name.', '200')
@@ -62,6 +63,7 @@ import { program } from 'commander';
                 'websockets.limits.events.maxBatchSize': parseInt(options.maxEventBatchSize),
                 'websockets.limits.presence.maxMembersPerChannel': parseInt(options.maxPresenceMembersPerChannel),
                 'websockets.limits.presence.maxMemberSizeInKb': parseInt(options.maxPresenceMemberSizeInKb),
+                'websockets.queueManagers.driver': options.queueManager,
                 'websockets.server.host': options.host,
                 'websockets.server.port': parseInt(options.port),
                 'metrics.enabled': options.metrics,
