@@ -1,4 +1,6 @@
-import { AppInterface } from "./app-managers/app";
+import { AppInterface } from './app-managers/app';
+import { ConsumerOptions } from '@rxfork/sqs-consumer';
+import { SQSClientConfig } from '@aws-sdk/client-sqs';
 
 export interface Options {
     cors: {
@@ -24,7 +26,7 @@ export interface Options {
                 enabled: boolean;
                 ttl: number;
             };
-            driver: string;
+            driver: 'array';
             drivers: {
                 array: {
                     apps: AppInterface[];
@@ -32,7 +34,7 @@ export interface Options {
             };
         };
         cache: {
-            driver: string;
+            driver: 'memory';
         };
         dns: {
             discovery: {
@@ -67,10 +69,20 @@ export interface Options {
             };
         };
         queueManagers: {
-            driver: 'sync';
+            driver: 'sync'|'sqs';
+            sqs: {
+                region?: string;
+                endpoint?: string;
+                clientOptions?: SQSClientConfig;
+                consumerOptions?: ConsumerOptions;
+                url: string;
+                processBatch: boolean;
+                batchSize: number;
+                pollingWaitTimeMs: number;
+            },
         };
         rateLimiters: {
-            driver: string;
+            driver: 'local';
         };
         server: {
             host: string;

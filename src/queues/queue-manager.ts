@@ -2,6 +2,7 @@ import { Log } from '../log';
 import { Options } from '../options';
 import { Job } from './job';
 import { QueueInterface } from './queue-interface';
+import { SqsQueueManager } from './sqs-queue-manager';
 import { SyncQueueManager } from './sync-queue-manager';
 
 export class QueueManager {
@@ -9,10 +10,16 @@ export class QueueManager {
     static options: Options;
 
     static async initialize(options: Options) {
-        if (options.websockets.queueManagers.driver === 'sync') {
-            this.driver = new SyncQueueManager(options);
-        } else {
-            Log.error('[Queue Manager] Queue driver was not initialized.');
+        switch (options.websockets.queueManagers.driver) {
+            case 'sync':
+                this.driver = new SyncQueueManager(options);
+                break;
+            case 'sqs':
+                this.driver = new SqsQueueManager(options);
+                break;
+            default:
+                Log.error('[Queue Manager] Queue driver was not initialized.');
+                break;
         }
     }
 

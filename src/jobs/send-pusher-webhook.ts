@@ -1,7 +1,7 @@
 import { AppManager } from '../app-managers/app-manager';
 import axios from 'axios';
 import { DefaultJobData, Job } from '../queues/job';
-import { Lambda } from 'aws-sdk';
+import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { Log } from '../log';
 
 export interface PusherClientEventData {
@@ -100,20 +100,19 @@ export class SendPusherWebhook extends Job {
                 }
             } else if (webhook.lambda_function) {
                 // Invoke a Lambda function
-                const params = {
-                    FunctionName: webhook.lambda_function,
-                    InvocationType: webhook.lambda.async ? 'Event' : 'RequestResponse',
-                    Payload: Buffer.from(JSON.stringify({ payload, headers })),
-                };
-
-                let lambda = new Lambda({
+                let lambda = new LambdaClient({
                     apiVersion: '2015-03-31',
                     region: webhook.lambda.region || 'us-east-1',
                     ...(webhook.lambda.client_options || {}),
                 });
 
                 try {
-                    await lambda.invoke(params).promise();
+                    await lambda.send(new InvokeCommand({
+                        FunctionName: webhook.lambda_function,
+                        InvocationType: webhook.lambda.async ? 'Event' : 'RequestResponse',
+                        Payload: Buffer.from(JSON.stringify({ payload, headers })),
+                    }));
+
                     Log.info(`[Queues][Webhooks][Pusher] Lambda ${webhook.lambda_function} triggered.`);
                 } catch (error) {
                     Log.warning(`[Queues][Webhooks][Pusher] Lambda ${webhook.lambda_function} trigger failed: ${error}`);

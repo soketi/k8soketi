@@ -23,11 +23,19 @@ import { program } from 'commander';
         .option('--dns-server-port <dnsServerPort>', 'The port on the DNS server to query to get the other peers.', '53')
         .option('--verbose', 'Enable verbose messages.', false)
         .option('--timestamps', 'Enable logging timestamps.', false)
-        .option('--cache <cache>', 'The cache driver to use. (available: "memory")', 'memory')
+        .option('--cache-manager <cacheManager>', 'The cache driver to use. (available: "memory")', 'memory')
         .option('--app-manager <appManager>', 'The app manager driver to use. (available: "array")', 'array')
         .option('--app-manager-cache', 'Allow app managers to cache app responses.', false)
         .option('--app-manager-cache-ttl <appManagerCacheTtl>', 'The TTL of cache for app responses.', '-1')
-        .option('--queue-manager <queueManager>', 'The queue manager driver to use. (available: "sync")', 'sync')
+        .option('--queue-manager <queueManager>', 'The queue manager driver to use. (available: "sync", "sqs")', 'sync')
+        .option('--queue-sqs-region <queueSqsRegion>', 'The region of the SQS queue.', 'us-east-1')
+        .option('--queue-sqs-options <queueSqsOptions>', 'The JSON-formatted string with extra SQS options. Read more: https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/configuring-the-jssdk.html', '{}')
+        .option('--queue-sqs-consumer-options <queueSqsConsumerOptions>', 'The JSON-formatted string with extra SQS Consumer options. Read more: https://github.com/rxfork/sqs-consumer', '{}')
+        .option('--queue-sqs-url <queueSqsUrl>', 'The SQS queue URL.', '')
+        .option('--queue-sqs-batching', 'Process the events in batch (set by the --queue-sqs-batch-size)', false)
+        .option('--queue-sqs-batch-size <queueSqsBatchSize>', 'The maximum amount of jobs to wait before polling once. Works only with --queue-sqs-batching', '1')
+        .option('--queue-sqs-polling-wait-time-ms <queueSqsPollingWaitTimeMs>', 'The polling time (in ms) for the queue.', '0')
+        .option('--queue-sqs-endpoint <queueSqsEndpoint>', 'The API URL of the SQS service. This is NOT the queue URL. Use --queue-sqs-url for the queue URL.', '')
         .option('--max-channel-name-length <maxChannelNameLength>', 'The default limit of max. characters for a  channel name.', '200')
         .option('--max-channels-on-broadcast <maxChannelsAtOnce>', 'The default limit of max. channels that can be passed in a single broadcast command.', '100')
         .option('--max-event-name-length <maxEventLengthName>', 'The default limit of max. characters for an event name.', '200')
@@ -51,7 +59,7 @@ import { program } from 'commander';
                 'websockets.appManagers.cache.enabled': options.appManagerCache,
                 'websockets.appManagers.cache.ttl': parseInt(options.appManagerCacheTtl),
                 'websockets.appManagers.driver': options.appManager,
-                'websockets.cache.driver': options.cache,
+                'websockets.cache.driver': options.cacheManager,
                 'websockets.dns.discovery.host': options.dnsDiscoveryHost,
                 'websockets.dns.discovery.port': options.dnsDiscoveryPort,
                 'websockets.dns.server.host': options.dnsServerHost,
@@ -64,6 +72,14 @@ import { program } from 'commander';
                 'websockets.limits.presence.maxMembersPerChannel': parseInt(options.maxPresenceMembersPerChannel),
                 'websockets.limits.presence.maxMemberSizeInKb': parseInt(options.maxPresenceMemberSizeInKb),
                 'websockets.queueManagers.driver': options.queueManager,
+                'websockets.queueManagers.sqs.region': options.queueSqsRegion,
+                'websockets.queueManagers.sqs.endpoint': options.queueSqsEndpoint === '' ? null : options.queueSqsEndpoint,
+                'websockets.queueManagers.sqs.clientOptions': JSON.parse(options.queueSqsOptions) || null,
+                'websockets.queueManagers.sqs.consumerOptions': JSON.parse(options.queueSqsConsumerOptions) || null,
+                'websockets.queueManagers.sqs.url': options.queueSqsUrl,
+                'websockets.queueManagers.sqs.processBatch': options.queueSqsBatching,
+                'websockets.queueManagers.sqs.batchSize': parseInt(options.queueSqsBatchSize),
+                'websockets.queueManagers.sqs.pollingWaitTimeMs': parseInt(options.queueSqsPollingWaitTimeMs),
                 'websockets.server.host': options.host,
                 'websockets.server.port': parseInt(options.port),
                 'metrics.enabled': options.metrics,

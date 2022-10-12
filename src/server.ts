@@ -101,6 +101,16 @@ export default class Server {
             },
             queueManagers: {
                 driver: 'sync',
+                sqs: {
+                    region: 'us-east-1',
+                    endpoint: null,
+                    clientOptions: {},
+                    consumerOptions: {},
+                    url: '',
+                    processBatch: false,
+                    batchSize: 1,
+                    pollingWaitTimeMs: 0,
+                },
             },
             rateLimiters: {
                 driver: 'local',

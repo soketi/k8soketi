@@ -12,6 +12,7 @@ import { RateLimiter } from '../rate-limiters/rate-limiter';
 import { WebsocketsNode } from '../websocketsNode';
 import { WebSocket } from '../websocket';
 import { WsUtils } from '../utils/ws-utils';
+import { PusherWebhookSender } from '../webhook-sender/pusher-webhook-sender';
 
 export interface PresenceMemberInfo {
     [key: string]: any;
@@ -241,6 +242,10 @@ export class PusherWebsocketsHandler {
         // Make sure to update the socket after new data was pushed in.
         this.wsNode.namespace(ws.app.id).addSocket(ws);
 
+        if (response.channelConnections === 1) {
+            PusherWebhookSender.sendChannelOccupied(ws.app, channel);
+        }
+
         // For non-presence channels, end with subscription succeeded.
         if (!(channelManager instanceof PresenceChannelManager)) {
             await ws.sendJson({
@@ -267,6 +272,8 @@ export class PusherWebsocketsHandler {
 
         // If the member already exists in the channel, don't resend the member_added event.
         if (!members.has(user_id as string)) {
+            PusherWebhookSender.sendMemberAdded(ws.app, channel, user_id as string);
+
             await this.wsNode.namespace(ws.app.id).broadcastMessage(
                 channel,
                 {
@@ -301,7 +308,7 @@ export class PusherWebsocketsHandler {
     }
 
     protected static async handleUnsubscribe(ws: WebSocket, message: PusherMessage): Promise<void> {
-        await this.wsNode.unsubscribeFromChannel(ws, message.channel);
+        await this.unsubscribeFromChannel(ws, message.channel);
     }
 
     protected static async handleClientEvent(ws: WebSocket, message: PusherMessage): Promise<void> {
@@ -373,6 +380,10 @@ export class PusherWebsocketsHandler {
         };
 
         this.wsNode.namespace(ws.app.id).broadcastMessage(channel, formattedMessage, ws.id);
+
+        PusherWebhookSender.sendClientEvent(
+            ws.app, channel, event, data, ws.id, userId as string,
+        );
     }
 
     protected static async handleSignin(ws: WebSocket, message: PusherMessage): Promise<void> {
@@ -420,6 +431,99 @@ export class PusherWebsocketsHandler {
             event: 'pusher:signin_success',
             data: message.data,
         });
+    }
+
+    static async closeAllLocalSockets(): Promise<void> {
+        if (this.wsNode.namespaces.size === 0) {
+            return Promise.resolve();
+        }
+
+        for await (let [namespaceId, namespace] of this.wsNode.namespaces) {
+            let sockets = namespace.sockets;
+
+            for await (let [, ws] of sockets) {
+                await ws.sendJsonAndClose({
+                    event: 'pusher:error',
+                    data: {
+                        code: 4200,
+                        message: 'Server closed. Please reconnect shortly.',
+                    },
+                }, 4200);
+
+                await this.wsNode.evictSocketFromMemory(ws);
+            }
+
+            await this.wsNode.clearNamespace(namespaceId);
+        }
+
+        await this.wsNode.clearNamespaces();
+
+        Log.info(`[WebSockets][Pusher] Closed all local sockets.`);
+    }
+
+    static async unsubscribeFromAllChannels(ws: WebSocket, closing = true): Promise<void> {
+        if (!ws.subscribedChannels) {
+            return;
+        }
+
+        for await (let channel of ws.subscribedChannels) {
+            await this.unsubscribeFromChannel(ws, channel, closing);
+        }
+
+        if (ws.app && ws.user) {
+            this.wsNode.namespace(ws.app.id).removeUser(ws);
+        }
+
+        Log.info(`[WebSockets][Pusher] Unsubscribed ${ws.id || ws.ip} from all channels.`);
+    }
+
+    static async unsubscribeFromChannel(ws: WebSocket, channel: string, closing = false): Promise<void> {
+        let channelManager = this.wsNode.getChannelManagerFor(channel);
+        let response = await channelManager.leave(ws, channel);
+        let member = ws.presence.get(channel);
+
+        if (response.left) {
+            // Send presence channel-speific events and delete specific data.
+            // This can happen only if the user is connected to the presence channel.
+            if (channelManager instanceof PresenceChannelManager && member) {
+                ws.presence.delete(channel);
+
+                // Make sure to update the socket after new data was pushed in.
+                await this.wsNode.namespace(ws.app.id).addSocket(ws);
+
+                let members = await this.wsNode.namespace(ws.app.id).getChannelMembers(channel);
+
+                if (!members.has(member.user_id as string)) {
+                    PusherWebhookSender.sendMemberRemoved(ws.app, channel, member.user_id as string);
+
+                    this.wsNode.namespace(ws.app.id).broadcastMessage(
+                        channel,
+                        {
+                            event: 'pusher_internal:member_removed',
+                            channel,
+                            data: JSON.stringify({
+                                user_id: member.user_id,
+                            }),
+                        },
+                        ws.id,
+                    );
+                }
+            }
+
+            ws.subscribedChannels.delete(channel);
+
+            // Make sure to update the socket after new data was pushed in,
+            // but only if the user is not closing the connection.
+            if (!closing) {
+                this.wsNode.namespace(ws.app.id).addSocket(ws);
+            }
+
+            if (response.remainingConnections === 0) {
+                PusherWebhookSender.sendChannelVacated(ws.app, channel);
+            }
+
+            Log.info(`[WebSockets][Pusher][Channel: ${channel}] Unsubscribed ${ws.id || ws.ip}`);
+        }
     }
 
     protected static async attachDefaultDataToConnection(ws: WebSocket): Promise<void> {
@@ -502,7 +606,7 @@ export class PusherWebsocketsHandler {
                 data: cachedEvent,
             });
         } else {
-            // TODO: Implement webhooks this.server.webhookSender.sendCacheMissed(ws.app, channel);
+            PusherWebhookSender.sendCacheMissed(ws.app, channel);
         }
     }
 

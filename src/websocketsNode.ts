@@ -148,7 +148,7 @@ export class WebsocketsNode {
     }
 
     async evictSocketFromMemory(ws: WebSocket): Promise<void> {
-        await this.unsubscribeFromAllChannels(ws, true);
+        await PusherWebsocketsHandler.unsubscribeFromAllChannels(ws, true);
 
         if (ws.app) {
             await this.namespace(ws.app.id).removeSocket(ws.id);
@@ -157,93 +157,6 @@ export class WebsocketsNode {
         await ws.clearPingTimeout();
 
         Prometheus.newDisconnection(ws);
-    }
-
-    async unsubscribeFromAllChannels(ws: WebSocket, closing = true): Promise<void> {
-        if (!ws.subscribedChannels) {
-            return;
-        }
-
-        for await (let channel of ws.subscribedChannels) {
-            await this.unsubscribeFromChannel(ws, channel, closing);
-        }
-
-        if (ws.app && ws.user) {
-            this.namespace(ws.app.id).removeUser(ws);
-        }
-
-        Log.info(`[WebSockets] Unsubscribed ${ws.id || ws.ip} from all channels.`);
-    }
-
-    async unsubscribeFromChannel(ws: WebSocket, channel: string, closing = false): Promise<void> {
-        let channelManager = this.getChannelManagerFor(channel);
-        let response = await channelManager.leave(ws, channel);
-        let member = ws.presence.get(channel);
-
-        if (response.left) {
-            // Send presence channel-speific events and delete specific data.
-            // This can happen only if the user is connected to the presence channel.
-            if (channelManager instanceof PresenceChannelManager && member) {
-                ws.presence.delete(channel);
-
-                // Make sure to update the socket after new data was pushed in.
-                await this.namespace(ws.app.id).addSocket(ws);
-
-                let members = await this.namespace(ws.app.id).getChannelMembers(channel);
-
-                if (!members.has(member.user_id as string)) {
-                    this.namespace(ws.app.id).broadcastMessage(
-                        channel,
-                        {
-                            event: 'pusher_internal:member_removed',
-                            channel,
-                            data: JSON.stringify({
-                                user_id: member.user_id,
-                            }),
-                        },
-                        ws.id,
-                    );
-                }
-            }
-
-            ws.subscribedChannels.delete(channel);
-
-            // Make sure to update the socket after new data was pushed in,
-            // but only if the user is not closing the connection.
-            if (!closing) {
-                this.namespace(ws.app.id).addSocket(ws);
-            }
-
-            Log.info(`[WebSockets][Channel: ${channel}] Unsubscribed ${ws.id || ws.ip}`);
-        }
-    }
-
-    async closeAllLocalSockets(): Promise<void> {
-        if (this.namespaces.size === 0) {
-            return Promise.resolve();
-        }
-
-        for await (let [namespaceId, namespace] of this.namespaces) {
-            let sockets = namespace.sockets;
-
-            for await (let [, ws] of sockets) {
-                await ws.sendJsonAndClose({
-                    event: 'pusher:error',
-                    data: {
-                        code: 4200,
-                        message: 'Server closed. Please reconnect shortly.',
-                    },
-                }, 4200);
-
-                await this.evictSocketFromMemory(ws);
-            }
-
-            await this.clearNamespace(namespaceId);
-        }
-
-        await this.clearNamespaces();
-
-        Log.info(`[WebSockets] Closed all local sockets.`);
     }
 
     protected async registerPusherRoutes(): Promise<void> {

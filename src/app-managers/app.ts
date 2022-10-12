@@ -1,6 +1,6 @@
 import { createHmac } from 'crypto';
 import { HttpResponse } from 'uWebSockets.js';
-import { Lambda } from 'aws-sdk';
+import { LambdaClientConfig } from '@aws-sdk/client-lambda';
 import { Options } from '../options';
 import Pusher from 'pusher';
 import pusherUtil from 'pusher/lib/util';
@@ -45,7 +45,7 @@ export interface WebhookInterface {
     lambda: {
         async?: boolean;
         region?: string;
-        client_options?: Lambda.Types.ClientConfiguration,
+        client_options?: LambdaClientConfig,
     };
 }
 
