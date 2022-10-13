@@ -10,7 +10,7 @@ export class CacheManager {
     static async initialize(options: Options) {
         this.options = options;
 
-        if (options.websockets.cache.driver === 'memory') {
+        if (options.websockets.cacheManagers.driver === 'memory') {
             this.driver = new MemoryCacheManager(options);
         } else {
             Log.error('[Cache Manager] Cache driver was not initialized.');

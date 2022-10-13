@@ -33,7 +33,7 @@ export interface Options {
                 };
             };
         };
-        cache: {
+        cacheManagers: {
             driver: 'memory';
         };
         dns: {

@@ -64,7 +64,7 @@ export default class Server {
                     },
                 },
             },
-            cache: {
+            cacheManagers: {
                 driver: 'memory',
             },
             dns: {
@@ -174,6 +174,8 @@ export default class Server {
     }
 
     async stop(): Promise<void> {
+        // TODO: Grace period
+
         Log.info('🛑 Closing the peer node...', true);
         await this.peerNode.stop();
 
