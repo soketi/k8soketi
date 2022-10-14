@@ -68,8 +68,8 @@ export class WebsocketsNode {
         this.app.listen(this.options.websockets.server.host, this.options.websockets.server.port, process => {
             this.process = process;
 
-            Log.success(`📡 The Websockets server is available at 127.0.0.1:${this.options.websockets.server.port}`, true);
-            Log.success(`🔗 The HTTP API server is available at http://127.0.0.1:${this.options.websockets.server.port}`, true);
+            Log.info(`📡 The Websockets server is available at 127.0.0.1:${this.options.websockets.server.port}`, true);
+            Log.info(`🔗 The HTTP API server is available at http://127.0.0.1:${this.options.websockets.server.port}`, true);
         });
     }
 

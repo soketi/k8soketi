@@ -12,6 +12,7 @@ export class RateLimiter {
     static async initialize(options: Options) {
         if (options.websockets.rateLimiters.driver === 'local') {
             this.driver = new LocalRateLimiter(options);
+            Log.info('[Rate Limiter] Rate Limiter driver: local');
         } else {
             Log.error('[Rate Limiter] Rate Limiter driver was not initialized.');
         }

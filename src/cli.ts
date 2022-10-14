@@ -1,7 +1,7 @@
 import Server from './server';
 import { Option, program } from 'commander';
 
-(async () => {
+const registerStartCommand = async () => {
     let corsHeaders = [
         'Origin',
         'Content-Type',
@@ -28,9 +28,13 @@ import { Option, program } from 'commander';
     cmdx.addOption(new Option('--cache-manager <cacheManager>', 'The cache driver to use.').default('memory').choices(['memory']));
 
     // App Managers
-    cmdx.addOption(new Option('--app-manager <appManager>', 'The app manager driver to use.').default('array').choices(['array']))
+    cmdx.addOption(new Option('--app-manager <appManager>', 'The app manager driver to use.').default('array').choices(['array', 'dynamodb']))
         .addOption(new Option('--app-manager-cache', 'Allow app managers to cache app responses.').default(false).argParser(v => Boolean(v)))
-        .addOption(new Option('--app-manager-cache-ttl <appManagerCacheTtl>', 'The TTL of cache for app responses.').default(-1).argParser(v => parseInt(v)));
+        .addOption(new Option('--app-manager-cache-ttl <appManagerCacheTtl>', 'The TTL of cache for app responses.').default(-1).argParser(v => parseInt(v)))
+        // DynamoDB
+        .addOption(new Option('--app-manager-dynamodb-table <appManagerDynamodbTable>', 'The DynamoDB table name.').default('').implies({ appManager: 'dynamodb' }))
+        .addOption(new Option('--app-manager-dynamodb-region <appManagerDynamodbRegion>', 'The DynamoDB table region name.').default('us-east-1').implies({ appManager: 'dynamodb' }))
+        .addOption(new Option('--app-manager-dynamodb-endpoint <appManagerDynamodbEndpoint>', 'The API URL of the DynamoDB service.').default(null).implies({ appManager: 'dynamodb' }))
 
     // Queue Managers
     cmdx.addOption(new Option('--queue-manager <queueManager>', 'The queue manager driver to use.').default('sync').choices(['sync', 'sqs']))
@@ -68,20 +72,44 @@ import { Option, program } from 'commander';
 
     // Logging
     cmdx.option('--verbose', 'Enable verbose messages.', false)
+        .option('--show-warnings', 'Show warnings. Error are always shown.', false)
         .option('--timestamps', 'Enable logging timestamps.', false);
 
     cmdx.action(async (options, command) => {
         let server = new Server({
-            'logs.verbose': options.verbose,
-            'logs.timestamps': options.timestamps,
-            'websockets.appManagers.cache.enabled': options.appManagerCache,
-            'websockets.appManagers.cache.ttl': options.appManagerCacheTtl,
-            'websockets.appManagers.driver': options.appManager,
-            'websockets.cacheManagers.driver': options.cacheManager,
+            // Connection
+            'websockets.server.host': options.host,
+            'websockets.server.port': options.port,
             'websockets.dns.discovery.host': options.dnsDiscoveryHost,
             'websockets.dns.discovery.port': options.dnsDiscoveryPort,
             'websockets.dns.server.host': options.dnsServerHost,
             'websockets.dns.server.port': options.dnsServerPort,
+
+            // Cache Managers
+            'websockets.cacheManagers.driver': options.cacheManager,
+
+            // App Managers
+            'websockets.appManagers.driver': options.appManager,
+            'websockets.appManagers.cache.enabled': options.appManagerCache,
+            'websockets.appManagers.cache.ttl': options.appManagerCacheTtl,
+            // DynamoDB
+            'websockets.appManagers.drivers.dynamodb.table': options.appManagerDynamodbTable,
+            'websockets.appManagers.drivers.dynamodb.region': options.appManagerDynamodbRegion,
+            'websockets.appManagers.drivers.dynamodb.endpoint': options.appManagerDynamodbEndpoint,
+
+            // Queue Managers
+            'websockets.queueManagers.driver': options.queueManager,
+            // SQS
+            'websockets.queueManagers.sqs.region': options.queueSqsRegion,
+            'websockets.queueManagers.sqs.clientOptions': options.queueSqsOptions,
+            'websockets.queueManagers.sqs.consumerOptions': options.queueSqsConsumerOptions,
+            'websockets.queueManagers.sqs.url': options.queueSqsUrl,
+            'websockets.queueManagers.sqs.processBatch': options.queueSqsBatching,
+            'websockets.queueManagers.sqs.batchSize': options.queueSqsBatchSize,
+            'websockets.queueManagers.sqs.pollingWaitTimeMs': options.queueSqsPollingWaitTimeMs,
+            'websockets.queueManagers.sqs.endpoint': options.queueSqsEndpoint === '' ? null : options.queueSqsEndpoint,
+
+            // Limits
             'websockets.limits.channels.maxNameLength': options.maxChannelNameLength,
             'websockets.limits.events.maxChannelsAtOnce': options.maxChannelsAtOnce,
             'websockets.limits.events.maxNameLength': options.maxEventLengthName,
@@ -89,30 +117,32 @@ import { Option, program } from 'commander';
             'websockets.limits.events.maxBatchSize': options.maxEventBatchSize,
             'websockets.limits.presence.maxMembersPerChannel': options.maxPresenceMembersPerChannel,
             'websockets.limits.presence.maxMemberSizeInKb': options.maxPresenceMemberSizeInKb,
-            'websockets.queueManagers.driver': options.queueManager,
-            'websockets.queueManagers.sqs.region': options.queueSqsRegion,
-            'websockets.queueManagers.sqs.endpoint': options.queueSqsEndpoint === '' ? null : options.queueSqsEndpoint,
-            'websockets.queueManagers.sqs.clientOptions': options.queueSqsOptions,
-            'websockets.queueManagers.sqs.consumerOptions': options.queueSqsConsumerOptions,
-            'websockets.queueManagers.sqs.url': options.queueSqsUrl,
-            'websockets.queueManagers.sqs.processBatch': options.queueSqsBatching,
-            'websockets.queueManagers.sqs.batchSize': options.queueSqsBatchSize,
-            'websockets.queueManagers.sqs.pollingWaitTimeMs': options.queueSqsPollingWaitTimeMs,
-            'websockets.server.host': options.host,
-            'websockets.server.port': options.port,
+            'websockets.http.maxPayloadSizeInMb': options.maxPayloadSizeInMb,
+            'websockets.http.acceptTraffic.memoryThreshold': options.acceptTrafficThreshold,
+
+            // Metrics
             'metrics.enabled': options.metrics,
             'metrics.server.host': options.metricsServerHost,
             'metrics.server.port': options.metricsServerPort,
+
+            // CORS
             'cors.credentials': !options.disableCorsCredentials,
             'cors.origin': options.corsOrigins,
             'cors.methods': options.corsMethods,
             'cors.allowedHeaders': options.corsHeaders,
-            'websockets.http.maxPayloadSizeInMb': options.maxPayloadSizeInMb,
-            'websockets.http.acceptTraffic.memoryThreshold': options.acceptTrafficThreshold,
+
+            // Logging
+            'logs.verbose': options.verbose,
+            'logs.timestamps': options.timestamps,
+            'logs.showWarnings': options.showWarnings,
         }, true);
 
         await server.start();
     });
+};
+
+(async () => {
+    await registerStartCommand();
 
     program.configureHelp({
         sortSubcommands: true,

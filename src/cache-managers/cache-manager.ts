@@ -12,8 +12,9 @@ export class CacheManager {
 
         if (options.websockets.cacheManagers.driver === 'memory') {
             this.driver = new MemoryCacheManager(options);
+            Log.info('[Cache] Cache driver: memory');
         } else {
-            Log.error('[Cache Manager] Cache driver was not initialized.');
+            Log.error('[Cache] Cache driver was not initialized.');
         }
     }
 

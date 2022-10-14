@@ -30,6 +30,7 @@ export default class Server {
         logs: {
             verbose: false,
             timestamps: false,
+            showWarnings: false,
         },
         metrics: {
             enabled: false,
@@ -61,6 +62,11 @@ export default class Server {
                                 maxReadRequestsPerSecond: -1,
                             },
                         ],
+                    },
+                    dynamodb: {
+                        table: '',
+                        region: 'us-east-1',
+                        endpoint: null,
                     },
                 },
             },
@@ -142,6 +148,8 @@ export default class Server {
                 Log.enableTimestamps();
             }
         }
+
+        Log.showWarnings = this.options.logs.showWarnings;
     }
 
     async start(): Promise<void> {
@@ -170,7 +178,7 @@ export default class Server {
             await this.metricsNode.start();
         }
 
-        Log.success('👍 The node is now operating!', true);
+        Log.info('👍 The node is now operating!', true);
     }
 
     async stop(): Promise<void> {

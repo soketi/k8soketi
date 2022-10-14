@@ -79,8 +79,6 @@ export class SendPusherWebhook extends Job {
                 ? app.hmac(JSON.stringify(payload))
                 : originalPusherSignature;
 
-            Log.info('[Queues][Webhooks][Pusher] Processing webhook from queue.');
-
             const headers = {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
@@ -92,6 +90,8 @@ export class SendPusherWebhook extends Job {
 
             // Send HTTP POST to the target URL
             if (webhook.url) {
+                Log.info(`[Queues][HTTP][Webhooks][Pusher] Processing webhook for ${webhook.url}.`);
+
                 try {
                     await axios.post(webhook.url, payload, { headers });
                     Log.info(`[Queues][Webhooks][Pusher] Webhook sent: ${webhook.url} with ${JSON.stringify(payload)}`);
@@ -99,6 +99,8 @@ export class SendPusherWebhook extends Job {
                     Log.warning(`[Queues][Webhooks][Pusher] Webhook could not be sent: ${err}`);
                 }
             } else if (webhook.lambda_function) {
+                Log.info(`[Queues][Lambda][Webhooks][Pusher] Processing webhook for AWS Lambda ${webhook.lambda_function}.`);
+
                 // Invoke a Lambda function
                 let lambda = new LambdaClient({
                     apiVersion: '2015-03-31',

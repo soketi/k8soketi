@@ -41,7 +41,7 @@ export class MetricsNode {
     async start(): Promise<void> {
         this.app.listen(this.options.metrics.server.host, this.options.metrics.server.port, process => {
             this.process = process;
-            Log.success(`📈 The metrics server is available at http://127.0.0.1:${this.options.metrics.server.port}`, true);
+            Log.info(`📈 The metrics server is available at http://127.0.0.1:${this.options.metrics.server.port}`, true);
         });
     }
 

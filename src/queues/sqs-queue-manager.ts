@@ -43,8 +43,9 @@ export class SqsQueueManager extends SyncQueueManager {
             let unserializedMessage: UnserializedMessage = JSON.parse(Body);
             let job = this.extractJobFromUnserializedMessage(unserializedMessage);
 
+            Log.info(`[Queues][SQS] Job ${job.constructor.name} (ID: ${job.id}) on ${job.queue} received the payload: ${Body}`);
             await callback(job);
-            Log.info('[Queues][SQS] SQS message processed.');
+            Log.info(`[Queues][SQS] Job ${job.constructor.name} (ID: ${job.id}) on ${job.queue} was processed.`);
         };
 
         let consumerOptions: ConsumerOptions = {

@@ -2,6 +2,7 @@ import { App } from './app';
 import { AppManagerInterface } from './app-manager-interface';
 import { ArrayAppManager } from './array-app-manager';
 import { CacheManager } from '../cache-managers/cache-manager';
+import { DynamoDbAppManager } from './dynamodb-app-manager';
 import { Log } from '../log';
 import { Options } from '../options';
 
@@ -14,6 +15,10 @@ export class AppManager {
 
         if (options.websockets.appManagers.driver === 'array') {
             this.driver = new ArrayAppManager(options);
+            Log.info('[App Manager] App Manager: Array');
+        } else if (options.websockets.appManagers.driver === 'dynamodb') {
+            this.driver = new DynamoDbAppManager(options);
+            Log.info('[App Manager] App Manager: AWS DynamoDB');
         } else {
             Log.error('[App Manager] The App Manager driver was not initialized.');
         }

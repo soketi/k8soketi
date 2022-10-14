@@ -109,7 +109,15 @@ export class PusherWebsocketsHandler {
         });
 
         if (ws.app.enableUserAuthentication) {
-            ws.setUserAuthenticationTimeout(ws);
+            ws.userAuthenticationTimeout = setTimeout(() => {
+                ws.sendJsonAndClose({
+                    event: 'pusher:error',
+                    data: {
+                        code: 4009,
+                        message: 'Connection not authorized within timeout.',
+                    },
+                }, 4009);
+            }, 30e3); // TODO: Custom timeout
         }
 
         Prometheus.newConnection(ws);
@@ -552,7 +560,7 @@ export class PusherWebsocketsHandler {
                 } catch (e) {
                     Log.warning(`[Pusher][WebSockets] ${e}`);
                 }
-            }, 120e3);
+            }, 120e3); // TODO: Custom timeout
         }
 
         ws.sendJson = async (data) => {

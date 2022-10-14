@@ -3,13 +3,17 @@ import colors from 'colors';
 export class Log {
     static verbose = false;
     static timestamps = false;
+    static showWarnings = false;
 
     static colorsList = {
         '[Pubsub]': 'magenta',
-        '[App Manager]': 'orange',
-        '[Request]': 'white',
+        '[App Manager]': 'cyan',
+        '[Request]': 'gray',
         '[WebSockets]': 'blue',
-        '[Discovery]': 'yellow',
+        '[Discovery]': 'green',
+        '[Queues]': 'green',
+        '[Cache]': 'magenta',
+        '[Rate Limiter]': 'gray',
     };
 
     static enableVerbosity() {
@@ -42,6 +46,10 @@ export class Log {
     }
 
     static warning(message: any): void {
+        if (!this.showWarnings) {
+            return;
+        }
+
         this.log(message, true, 'yellow', 'mx-2');
     }
 

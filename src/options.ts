@@ -11,6 +11,7 @@ export interface Options {
     };
     logs: {
         verbose: boolean;
+        showWarnings: boolean;
         timestamps: boolean;
     };
     metrics: {
@@ -26,10 +27,15 @@ export interface Options {
                 enabled: boolean;
                 ttl: number;
             };
-            driver: 'array';
+            driver: 'array'|'dynamodb';
             drivers: {
                 array: {
                     apps: AppInterface[];
+                };
+                dynamodb: {
+                    table: string;
+                    region: string;
+                    endpoint?: string;
                 };
             };
         };
