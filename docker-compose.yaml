@@ -56,10 +56,6 @@ services:
     environment:
       AWS_ACCESS_KEY_ID: fake-id
       AWS_SECRET_ACCESS_KEY: fake-secret
-    healthcheck:
-      test: ["CMD", "curl", "--user=fake-id:fake-secret", "--aws-sigv4=aws:amz:us-east-1:dynamodb", "-f", "http://localhost:4566"]
-      retries: 3
-      timeout: 5s
   initialize_dynamodb:
     container_name: initialize_dynamodb
     image: node:18-alpine

@@ -49,6 +49,8 @@ export class HttpUtils {
 
     static async extractRequestDetails(res: HttpResponse, req: HttpRequest, namedParams: string[] = []): Promise<HttpResponse> {
         if (namedParams.length > 0) {
+            res.params = {};
+
             for await (let [index, paramName] of namedParams.entries()) {
                 res.params[paramName] = req.getParameter(index);
             }

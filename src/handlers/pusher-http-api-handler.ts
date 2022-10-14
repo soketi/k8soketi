@@ -84,7 +84,7 @@ export class PusherHttpApiHandler extends HttpHandler {
 
         let socketsCount = await this.wsNode
             .namespace(res.params.appId)
-            .getChannelSocketsCount(res.params.channel);
+            .getChannelSocketsCount(res.params.channelName);
 
         response = {
             subscription_count: socketsCount,
@@ -93,13 +93,13 @@ export class PusherHttpApiHandler extends HttpHandler {
 
         // For presence channels, attach an user_count.
         // Avoid extra call to get channel members if there are no sockets.
-        if (WsUtils.isPresenceChannel(res.params.channel)) {
+        if (WsUtils.isPresenceChannel(res.params.channelName)) {
             response.user_count = 0;
 
             if (response.subscription_count > 0) {
                 let membersCount = await this.wsNode
                     .namespace(res.params.appId)
-                    .getChannelMembersCount(res.params.channel);
+                    .getChannelMembersCount(res.params.channelName);
 
                 return HttpUtils.sendJson(res, {
                     ...response,
@@ -114,13 +114,13 @@ export class PusherHttpApiHandler extends HttpHandler {
     }
 
     static async channelUsers(res: HttpResponse): Promise<HttpResponse> {
-        if (!WsUtils.isPresenceChannel(res.params.channel)) {
+        if (!WsUtils.isPresenceChannel(res.params.channelName)) {
             return HttpUtils.badResponse(res, 'The channel must be a presence channel.');
         }
 
         let members = await this.wsNode
             .namespace(res.params.appId)
-            .getChannelMembers(res.params.channel);
+            .getChannelMembers(res.params.channelName);
 
         return HttpUtils.sendJson(res, {
             users: [...members].map(([user_id, user_info]) => {

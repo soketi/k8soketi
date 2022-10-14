@@ -146,7 +146,7 @@ export class Namespace {
         let size = this.channels.get(channel).size;
 
         if (!onlyLocal) {
-            let dataFromOtherPeers: number[] = await this.makeRequestToAllPeers({
+            let dataFromPeers = await this.makeRequestToAllPeers({
                 data: {
                     appId: this.appId,
                     method: 'getChannelSocketsCount',
@@ -154,8 +154,8 @@ export class Namespace {
                 },
             });
 
-            for await (let socketsCount of dataFromOtherPeers) {
-                size += socketsCount;
+            for await (let socketsCount of dataFromPeers) {
+                size += parseInt(socketsCount);
             }
         }
 
@@ -166,7 +166,7 @@ export class Namespace {
         let size = this.sockets.size;
 
         if (!onlyLocal) {
-            let dataFromOtherPeers: number[] = await this.makeRequestToAllPeers({
+            let dataFromPeers = await this.makeRequestToAllPeers({
                 data: {
                     appId: this.appId,
                     method: 'getSocketsCount',
@@ -174,8 +174,8 @@ export class Namespace {
                 },
             });
 
-            for await (let socketsCount of dataFromOtherPeers) {
-                size += socketsCount;
+            for await (let socketsCount of dataFromPeers) {
+                size += parseInt(socketsCount);
             }
         }
 
@@ -191,7 +191,7 @@ export class Namespace {
         }
 
         if (!onlyLocal) {
-            let dataFromPeers: [string, number][] = await this.makeRequestToAllPeers({
+            let dataFromPeers = await this.makeRequestToAllPeers({
                 data: {
                     appId: this.appId,
                     method: 'getChannelsWithSocketsCount',
@@ -199,8 +199,10 @@ export class Namespace {
                 },
             });
 
-            for await (let [channel, socketsCount] of dataFromPeers) {
-                list.set(channel, (list.get(channel) || 0) + socketsCount);
+            for await (let peerData of dataFromPeers) {
+                for await (let [channel, socketsCount] of JSON.parse(peerData)) {
+                    list.set(channel, (list.get(channel) || 0) + parseInt(socketsCount));
+                }
             }
         }
 
@@ -223,7 +225,7 @@ export class Namespace {
         }, new Map<string, PresenceMemberInfo>());
 
         if (!onlyLocal) {
-            let dataFromPeers: [string, PresenceMemberInfo][] = await this.makeRequestToAllPeers({
+            let dataFromPeers = await this.makeRequestToAllPeers({
                 data: {
                     appId: this.appId,
                     method: 'getChannelMembers',
@@ -231,8 +233,10 @@ export class Namespace {
                 },
             });
 
-            for await (let [userId, userInfo] of dataFromPeers) {
-                members.set(userId, userInfo);
+            for await (let peerData of dataFromPeers) {
+                for await (let [userId, userInfo] of JSON.parse(peerData)) {
+                    members.set(userId as string, userInfo as PresenceMemberInfo);
+                }
             }
         }
 
@@ -243,7 +247,7 @@ export class Namespace {
         let size = (await this.getChannelMembers(channel, true)).size;
 
         if (!onlyLocal) {
-            let dataFromPeers: number[] = await this.makeRequestToAllPeers({
+            let dataFromPeers = await this.makeRequestToAllPeers({
                 data: {
                     appId: this.appId,
                     method: 'getChannelMembersCount',
@@ -252,7 +256,7 @@ export class Namespace {
             });
 
             for await (let membersCount of dataFromPeers) {
-                size += membersCount;
+                size += parseInt(membersCount);
             }
         }
 
@@ -331,7 +335,7 @@ export class Namespace {
         }
     }
 
-    protected async makeRequestToAllPeers({ version = '1', data }: PeerRequestData): Promise<any[]> {
+    protected async makeRequestToAllPeers({ version = '1', data }: PeerRequestData): Promise<string[]> {
         let peers = this.wsNode.peerNode.subscribedPeers(`app-${this.appId}`);
 
         if (peers.length === 0) {

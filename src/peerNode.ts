@@ -164,7 +164,7 @@ export class PeerNode {
                             stream.id,
                         );
 
-                        stream.sink([fromString(responseData)]);
+                        stream.sink([fromString(responseData + '')]);
                         Log.info(`[Request][Stream: ${stream.id}][/v${version}/${action}] Replied with: ${responseData}`);
                     }
                 }
@@ -172,7 +172,7 @@ export class PeerNode {
         });
     }
 
-    async makeRequest({ peerId, action, version = '1', data }: RequestData): Promise<{ [key: string]: any; }> {
+    async makeRequest({ peerId, action, version = '1', data }: RequestData): Promise<string> {
         return new Promise(async resolve => {
             try {
                 let stream = await this.libp2p.dialProtocol(peerId, `/v${version}/${action}`);
@@ -184,8 +184,9 @@ export class PeerNode {
 
                 pipe([requestData], stream, async (source) => {
                     for await (let data of source) {
-                        resolve(JSON.parse(toString(data.subarray())));
+                        resolve(toString(data.subarray()));
                     }
+
                 });
             } catch (e) {
                 Log.warning(`[Request][/v${version}/${action}] ${e}`);
@@ -207,6 +208,10 @@ export class PeerNode {
     }
 
     watchStreamForMetrics(remotePeer: PeerId, stream: any, protocol: string): void {
+        if (!this.libp2p.metrics) {
+            return;
+        }
+
         this.libp2p.metrics.trackStream({
             remotePeer,
             stream,

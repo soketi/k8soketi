@@ -14,6 +14,8 @@ const registerStartCommand = async () => {
         'X-Socket-Id',
     ];
 
+    let corsMethods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
+
     let cmdx = program.command('start');
 
     // Connection
@@ -32,9 +34,9 @@ const registerStartCommand = async () => {
         .addOption(new Option('--app-manager-cache', 'Allow app managers to cache app responses.').default(false).argParser(v => Boolean(v)))
         .addOption(new Option('--app-manager-cache-ttl <appManagerCacheTtl>', 'The TTL of cache for app responses.').default(-1).argParser(v => parseInt(v)))
         // DynamoDB
-        .addOption(new Option('--app-manager-dynamodb-table <appManagerDynamodbTable>', 'The DynamoDB table name.').default('').implies({ appManager: 'dynamodb' }))
-        .addOption(new Option('--app-manager-dynamodb-region <appManagerDynamodbRegion>', 'The DynamoDB table region name.').default('us-east-1').implies({ appManager: 'dynamodb' }))
-        .addOption(new Option('--app-manager-dynamodb-endpoint <appManagerDynamodbEndpoint>', 'The API URL of the DynamoDB service.').default(null).implies({ appManager: 'dynamodb' }))
+        .addOption(new Option('--app-manager-dynamodb-table <appManagerDynamodbTable>', 'The DynamoDB table name.').env('APP_MANAGER_DYNAMODB_TABLE').default('').implies({ appManager: 'dynamodb' }))
+        .addOption(new Option('--app-manager-dynamodb-region <appManagerDynamodbRegion>', 'The DynamoDB table region name.').env('APP_MANAGER_DYNAMODB_REGION').default('us-east-1').implies({ appManager: 'dynamodb' }))
+        .addOption(new Option('--app-manager-dynamodb-endpoint <appManagerDynamodbEndpoint>', 'The API URL of the DynamoDB service.').env('APP_MANAGER_DYNAMODB_ENDPOINT').default(null).implies({ appManager: 'dynamodb' }))
 
     // Queue Managers
     cmdx.addOption(new Option('--queue-manager <queueManager>', 'The queue manager driver to use.').default('sync').choices(['sync', 'sqs']))
@@ -42,7 +44,7 @@ const registerStartCommand = async () => {
         .addOption(new Option('--queue-sqs-region <queueSqsRegion>', 'The region of the SQS queue.').default('us-east-1').implies({ queueManager: 'sqs' }))
         .addOption(new Option('--queue-sqs-options <queueSqsOptions>', 'The JSON-formatted string with extra SQS options. Read more: https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/configuring-the-jssdk.html').default('{}').argParser(v => JSON.parse(v)).implies({ queueManager: 'sqs' }))
         .addOption(new Option('--queue-sqs-consumer-options <queueSqsConsumerOptions>', 'The JSON-formatted string with extra SQS Consumer options. Read more: https://github.com/rxfork/sqs-consumer').default('{}').argParser(v => JSON.parse(v)).implies({ queueManager: 'sqs' }))
-        .addOption(new Option('--queue-sqs-url <queueSqsUrl>', 'The SQS queue URL.').default('').env('QUEUE_SQS_URL').implies({ queueManager: 'sqs' }))
+        .addOption(new Option('--queue-sqs-url <queueSqsUrl>', 'The SQS queue URL.').env('QUEUE_SQS_URL').default('').implies({ queueManager: 'sqs' }))
         .addOption(new Option('--queue-sqs-batching', 'Process the events in batch.').default(false).argParser(v => Boolean(v)).implies({ queueManager: 'sqs' }))
         .addOption(new Option('--queue-sqs-batch-size <queueSqsBatchSize>', 'The maximum amount of jobs to wait before polling once.').default(1).argParser(v => parseInt(v)).implies({ queueManager: 'sqs', queueSqsBatching: true }))
         .addOption(new Option('--queue-sqs-polling-wait-time-ms <queueSqsPollingWaitTimeMs>', 'The polling time (in ms) for the queue.').default(0).argParser(v => parseFloat(v)).implies({ queueManager: 'sqs' }))
@@ -66,9 +68,9 @@ const registerStartCommand = async () => {
 
     // CORS
     cmdx.addOption(new Option('--disable-cors-credentials', 'Disable credentials support for CORS').default(false).argParser(v => Boolean(v)))
-        .addOption(new Option('--cors-origins <corsOrigins>', 'A comma-separated list of origins to allow through CORS.').default('*').argParser(v => v.split(',')))
-        .addOption(new Option('--cors-methods <corsMethods>', 'A comma-separated list of HTTP methods to allow through CORS.').default(['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'].join(',')).argParser(v => v.split(',')))
-        .addOption(new Option('--cors-headers <corsHeaders>', 'A comma-separated list of headers to allow throuh CORS').default(corsHeaders.join(',')).argParser(v => v.split(',')))
+        .addOption(new Option('--cors-origins <corsOrigins>', 'A comma-separated list of origins to allow through CORS.').default('*'))
+        .addOption(new Option('--cors-methods <corsMethods>', 'A comma-separated list of HTTP methods to allow through CORS.').default(corsMethods.join(',')))
+        .addOption(new Option('--cors-headers <corsHeaders>', 'A comma-separated list of headers to allow throuh CORS').default(corsHeaders.join(',')))
 
     // Logging
     cmdx.option('--verbose', 'Enable verbose messages.', false)
@@ -127,9 +129,9 @@ const registerStartCommand = async () => {
 
             // CORS
             'cors.credentials': !options.disableCorsCredentials,
-            'cors.origin': options.corsOrigins,
-            'cors.methods': options.corsMethods,
-            'cors.allowedHeaders': options.corsHeaders,
+            'cors.origin': options.corsOrigins.split(','),
+            'cors.methods': options.corsMethods.split(','),
+            'cors.allowedHeaders': options.corsHeaders.split(','),
 
             // Logging
             'logs.verbose': options.verbose,

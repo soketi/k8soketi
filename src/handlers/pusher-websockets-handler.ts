@@ -316,7 +316,7 @@ export class PusherWebsocketsHandler {
     }
 
     protected static async handleUnsubscribe(ws: WebSocket, message: PusherMessage): Promise<void> {
-        await this.unsubscribeFromChannel(ws, message.channel);
+        await this.unsubscribeFromChannel(ws, message.data.channel);
     }
 
     protected static async handleClientEvent(ws: WebSocket, message: PusherMessage): Promise<void> {
