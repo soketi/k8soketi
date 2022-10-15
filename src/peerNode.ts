@@ -59,6 +59,8 @@ export class PeerNode {
             ],
             pubsub: new GossipSub({
                 allowPublishToZeroPeers: true, // TODO: Pubsub settings
+                emitSelf: false,
+                heartbeatInterval: 5e3,
             }),
             peerDiscovery: [
                 new MulticastDNS({

@@ -91,7 +91,10 @@ export class WebsocketsNode {
 
         this.subscribedAppsIntervals.set(appId, setInterval(async () => {
             if ((await this.namespace(appId).getSocketsCount(true)) === 0) {
-                this.unsubscribeFromApp(appId);
+                await this.unsubscribeFromApp(appId);
+            } else {
+                // Heartbeat to keep the PeerId alive.
+                await this.peerNode.publishMessage(`app-${appId}`, {});
             }
         }, 5e3));
     }
