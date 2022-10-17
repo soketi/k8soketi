@@ -36,7 +36,7 @@
     "@aws-sdk/client-dynamodb": "^3.186.0",
     "@aws-sdk/client-lambda": "^3.186.0",
     "@aws-sdk/client-sqs": "^3.186.0",
-    "@aws-sdk/util-dynamodb": "^3.186.0",
+    "@aws-sdk/util-dynamodb": "^3.188.0",
     "@chainsafe/libp2p-gossipsub": "^4.1.1",
     "@chainsafe/libp2p-noise": "^8.0.1",
     "@libp2p/mdns": "^3.0.1",
