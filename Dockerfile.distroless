@@ -18,6 +18,7 @@ RUN apt-get update -y && \
     rm -rf node_modules/*/test/ node_modules/*/tests/ && \
     npm install -g modclean && \
     modclean -n default:safe --run && \
+    mkdir -p /app && \
     cp -r dist/ LICENSE package.json package-lock.json README.md /app/ && \
     chgrp -R 0 /app/ && \
     chmod -R g+rx /app/
