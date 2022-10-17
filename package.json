@@ -30,9 +30,6 @@
   "engines": {
     "node": ">=18.0"
   },
-  "jshintConfig": {
-    "esversion": 11
-  },
   "author": "Alex Renoki",
   "license": "AGPL-3.0",
   "devDependencies": {
