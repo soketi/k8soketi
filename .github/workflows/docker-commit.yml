@@ -19,12 +19,7 @@ jobs:
       matrix:
         node:
           - '18'
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
-    name: Tag & Test Distroless Commit (node:${{ matrix.node }})
+    name: Tag Distroless Commit (node:${{ matrix.node }})
     steps:
       - uses: actions/checkout@v3.0.2
       - name: Set up QEMU
@@ -56,12 +51,7 @@ jobs:
       matrix:
         node:
           - '18'
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
-    name: Tag & Test Debian Commit (node:${{ matrix.node }})
+    name: Tag Debian Commit (node:${{ matrix.node }})
     steps:
       - uses: actions/checkout@v3.0.2
       - name: Set up QEMU
