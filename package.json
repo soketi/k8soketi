@@ -20,7 +20,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "npm run build -- -W",
-    "cli": "./bin/server.js",
+    "cli": "NODE_OPTIONS=--es-module-specifier-resolution=node ./bin/server.js",
     "lint": "eslint --ext .js,.ts ./src",
     "prepublish": "npm run build",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --runInBand --forceExit",

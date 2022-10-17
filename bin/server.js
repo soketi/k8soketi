@@ -1,4 +1,4 @@
-#!/usr/bin/env node --es-module-specifier-resolution=node
+#!/usr/bin/env node
 
 import './../dist/cli';
 
