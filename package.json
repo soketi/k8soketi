@@ -79,7 +79,7 @@
     "pusher": "^5.1.1-beta",
     "query-string": "^7.1.1",
     "rate-limiter-flexible": "^2.3.12",
-    "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js.git#v20.10.0"
+    "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js.git#v20.12.0"
   },
   "bin": {
     "dsoketi": "bin/server.js"
