@@ -25,7 +25,7 @@ FROM node:$VERSION-bullseye-slim
 
 LABEL maintainer="Renoki Co. <alex@renoki.org>"
 
-ENV NODE_OPTIONS=--experimental-vm-modules
+ENV NODE_OPTIONS="--es-module-specifier-resolution=node"
 
 COPY --from=build /app /app
 
@@ -33,6 +33,4 @@ WORKDIR /app
 
 EXPOSE 6001
 
-ENTRYPOINT ["/app/bin/server.js"]
-
-CMD ["start"]
+ENTRYPOINT ["/app/bin/server.js", "start"]
