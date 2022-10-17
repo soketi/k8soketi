@@ -25,6 +25,8 @@ FROM node:$VERSION-bullseye-slim
 
 LABEL maintainer="Renoki Co. <alex@renoki.org>"
 
+ENV NODE_OPTIONS=--experimental-vm-modules
+
 COPY --from=build /app /app
 
 WORKDIR /app
