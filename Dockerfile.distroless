@@ -19,13 +19,15 @@ RUN apt-get update -y && \
     npm install -g modclean && \
     modclean -n default:safe --run && \
     mkdir -p /app && \
-    cp -r dist/ LICENSE package.json package-lock.json README.md /app/ && \
+    cp -r dist/ node_modules/ LICENSE package.json package-lock.json README.md /app/ && \
     chgrp -R 0 /app/ && \
     chmod -R g+rx /app/
 
 FROM gcr.io/distroless/nodejs:$VERSION
 
 LABEL maintainer="Renoki Co. <alex@renoki.org>"
+
+ENV NODE_OPTIONS=--experimental-vm-modules
 
 COPY --from=build /app /app
 
@@ -35,4 +37,4 @@ USER 65534
 
 EXPOSE 6001
 
-ENTRYPOINT ["node", "--experimental-specifier-resolution=node", "/app/dist/cli.js", "start"]
+ENTRYPOINT ["node", "/app/dist/cli.js", "start"]
