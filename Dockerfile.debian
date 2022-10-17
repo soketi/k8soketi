@@ -21,7 +21,7 @@ RUN apt-get update -y && \
     mkdir -p /app && \
     cp -r bin/ dist/ node_modules/ LICENSE package.json package-lock.json README.md /app/
 
-FROM node:$VERSION-bullseye
+FROM node:$VERSION-bullseye-slim
 
 LABEL maintainer="Renoki Co. <alex@renoki.org>"
 
