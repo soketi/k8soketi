@@ -11,7 +11,7 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "module": "ES2022",
-    "target": "ES2022",
+    "target": "ES2015",
     "baseUrl": "./src",
     "rootDir": "src",
     "outDir": "./dist",
