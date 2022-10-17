@@ -26,9 +26,6 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "100m"
-          env:
-            - name: NODE_OPTIONS
-              value: ''
           ports:
             - containerPort: 6001
             - containerPort: 15353
