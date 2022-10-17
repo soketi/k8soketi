@@ -32,7 +32,7 @@ services:
       context: .
       dockerfile: Dockerfile.awslocal
     volumes:
-      - ./tests/fixtures/sqs.json:/tmp/sqs.json
+      - ./src/tests/fixtures/sqs.json:/tmp/sqs.json
     networks:
       - soketi
     command:
@@ -65,4 +65,4 @@ services:
       - soketi
     entrypoint:
       - node
-      - /app/tests/fixtures/dynamodb_schema.js
+      - /app/src/tests/fixtures/dynamodb_schema.js

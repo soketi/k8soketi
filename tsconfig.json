@@ -1,24 +1,28 @@
 {
   "compilerOptions": {
     "allowSyntheticDefaultImports": true,
-    "module": "ES2020",
-    "target": "ES2015",
-    "moduleResolution": "node",
-    "outDir": "./dist",
+    "esModuleInterop": true,
     "sourceMap": false,
     "noImplicitAny": false,
     "preserveConstEnums": true,
     "removeComments": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "module": "ES2022",
+    "target": "ES2022",
+    "baseUrl": "./src",
+    "rootDir": "src",
+    "outDir": "./dist",
+    "paths": {
+      "~/*": ["./*"]
+    },
     "typeRoots": [
       "node_modules/@types"
     ],
-    "lib": [
-      "ES2022",
-      "dom"
-    ],
     "types": [
+      "jest",
       "node"
     ]
   },
@@ -26,6 +30,7 @@
     "./src/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "jest.config.ts"
   ]
 }
