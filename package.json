@@ -20,7 +20,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "npm run build -- -W",
-    "cli": "node --experimental-specifier-resolution=node ./dist/cli.js",
+    "cli": "./bin/server.js",
     "lint": "eslint --ext .js,.ts ./src",
     "prepublish": "npm run build",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles --runInBand --forceExit",
@@ -82,6 +82,6 @@
     "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js.git#v20.10.0"
   },
   "bin": {
-    "dsoketi": "dist/cli.js"
+    "dsoketi": "bin/server.js"
   }
 }
