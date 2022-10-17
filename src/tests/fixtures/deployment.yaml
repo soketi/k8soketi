@@ -16,10 +16,8 @@ spec:
         - name: ip-soketi
           image: quay.io/soketi/ip-soketi:latest-18-debian
           command:
-            - node
-            - --experimental-specifier-resolution=node
-            - ./dist/cli.js
-            - --
+            - ./bin/server.js
+            - start
             - --show-warnings
             - --verbose
             - --metrics

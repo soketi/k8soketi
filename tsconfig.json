@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "sourceMap": false,
     "noImplicitAny": false,
     "preserveConstEnums": true,
@@ -10,7 +11,7 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "module": "ES2022",
-    "target": "ES2015",
+    "target": "ES2022",
     "baseUrl": "./src",
     "rootDir": "src",
     "outDir": "./dist",
