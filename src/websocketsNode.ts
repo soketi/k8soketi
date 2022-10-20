@@ -93,18 +93,16 @@ export class WebsocketsNode {
 
         this.subscribedApps.add(appId);
 
-        await this.peerNode.subscribeToTopic(`app-${appId}`, (message: PubsubAppMessage) => {
-            Log.info(`[Pubsub][Topic: app-${appId}] Received message: ${JSON.stringify(message)}`);
-        });
-
         this.subscribedAppsIntervals.set(appId, setInterval(async () => {
             if ((await this.namespace(appId).getSocketsCount(true)) === 0) {
                 await this.unsubscribeFromApp(appId);
-            } else {
-                // Heartbeat to keep the PeerId alive.
-                await this.peerNode.publishMessage(`app-${appId}`, {});
             }
         }, 5e3));
+
+        await this.peerNode.makeRequestToAllPeers({
+            action: 'watching-app',
+            data: { appId },
+        });
     }
 
     async unsubscribeFromApp(appId: string): Promise<void> {
@@ -112,7 +110,11 @@ export class WebsocketsNode {
             return;
         }
 
-        this.peerNode.unsubscribeFromTopic(`app-${appId}`);
+        await this.peerNode.makeRequestToAllPeers({
+            action: 'evicted-app',
+            data: { appId },
+        });
+
         clearInterval(this.subscribedAppsIntervals.get(appId));
         this.subscribedAppsIntervals.delete(appId);
         this.subscribedApps.delete(appId);
@@ -155,6 +157,24 @@ export class WebsocketsNode {
 
                 return responseString;
             },
+        });
+
+        await this.peerNode.handleRequest({
+            action: 'watching-app',
+            version: '1',
+            onRequest: async ({ appId }, peerId) => {
+                await this.peerNode.peerStore.tagPeer(peerId, appId, { value: 1 });
+                return '';
+            }
+        });
+
+        await this.peerNode.handleRequest({
+            action: 'evicted-app',
+            version: '1',
+            onRequest: async ({ appId }, peerId) => {
+                await this.peerNode.peerStore.unTagPeer(peerId, appId);
+                return '';
+            }
         });
     }
 

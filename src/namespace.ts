@@ -5,6 +5,7 @@ import { WebSocket } from './websocket';
 import { WebsocketsNode } from './websocketsNode';
 
 export interface PeerRequestData {
+    action?: string;
     version?: string;
     data: { [key: string]: any; };
 }
@@ -335,8 +336,8 @@ export class Namespace {
         }
     }
 
-    protected async makeRequestToAllPeers({ version = '1', data }: PeerRequestData): Promise<string[]> {
-        let peers = this.wsNode.peerNode.subscribedPeers(`app-${this.appId}`);
+    async makeRequestToAllPeers({ version = '1', action = 'call-namespace-fn', data }: PeerRequestData): Promise<string[]> {
+        let peers = await this.wsNode.peerNode.peersWatchingApp(this.appId);
 
         if (peers.length === 0) {
             return [];
@@ -348,7 +349,7 @@ export class Namespace {
             promises.push(
                 this.wsNode.peerNode.makeRequest({
                     peerId,
-                    action: 'call-namespace-fn',
+                    action,
                     data,
                     version,
                 })
@@ -357,6 +358,6 @@ export class Namespace {
 
         Log.info(`[Request][App: ${this.appId}] Making request to ${peers.length} peers.`);
 
-        return await Promise.all(promises);
+        return Promise.all(promises);
     }
 }

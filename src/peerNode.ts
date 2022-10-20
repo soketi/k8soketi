@@ -10,12 +10,19 @@ import { Options } from './options';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { PeerInfo } from '@libp2p/interface-peer-info';
 import { pipe } from 'it-pipe';
+import { Prometheus } from './prometheus';
 import { PubsubMessage } from './message';
 import { TCP } from '@libp2p/tcp';
 import { toString } from 'uint8arrays/to-string';
 
 export interface RequestData {
     peerId: PeerId;
+    action: string;
+    version?: string;
+    data: { [key: string]: any; };
+}
+
+export interface PeerRequestData {
     action: string;
     version?: string;
     data: { [key: string]: any; };
@@ -202,6 +209,31 @@ export class PeerNode {
         });
     }
 
+    async makeRequestToAllPeers({ version = '1', action, data }: PeerRequestData): Promise<string[]> {
+        let peers = this.peers;
+
+        if (peers.length === 0) {
+            return [];
+        }
+
+        let promises = [];
+
+        for await (let peerId of peers) {
+            promises.push(
+                this.makeRequest({
+                    peerId,
+                    action,
+                    data,
+                    version,
+                })
+            );
+        }
+
+        Log.info(`[Request][/v${version}/${action}] Making request to ${peers.length} peers.`);
+
+        return Promise.all(promises);
+    }
+
     async ensurePeerIsRunning(callback: CallableFunction): Promise<void> {
         try {
             await callback();
@@ -211,8 +243,21 @@ export class PeerNode {
         }
     }
 
-    subscribedPeers(topic: string) {
-        return this.libp2p.pubsub.getSubscribers(topic);
+    async peersWatchingApp(appId: string): Promise<PeerId[]> {
+        let peers = this.libp2p.getPeers();
+        let watchingPeers = [];
+
+        for await (let peer of peers) {
+            let tags = await this.libp2p.peerStore.getTags(peer);
+
+            if (tags.find(t => t.name === appId)) {
+                watchingPeers.push(peer);
+            }
+        }
+
+        Prometheus.peersWatchingApp(watchingPeers.length, appId);
+
+        return watchingPeers;
     }
 
     watchStreamForMetrics(remotePeer: PeerId, stream: any, protocol: string): void {
@@ -227,8 +272,20 @@ export class PeerNode {
         });
     }
 
+    get peers() {
+        return this.libp2p.getPeers();
+    }
+
+    get peerStore() {
+        return this.libp2p.peerStore;
+    }
+
     get addressBook() {
-        return this.libp2p.peerStore.addressBook;
+        return this.peerStore.addressBook;
+    }
+
+    get metadataBook() {
+        return this.peerStore.metadataBook;
     }
 
     get metrics() {

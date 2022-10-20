@@ -95,6 +95,18 @@ export class Prometheus {
             labelNames: ['protocol'],
             registers: [this.registry],
         }),
+        peersWatchingApp: new prom.Gauge({
+            name: 'peers_watching_app_total',
+            help: 'The total amount of peers that watch for an app.',
+            labelNames: ['app_id'],
+            registers: [this.registry],
+        }),
+        peers: new prom.Gauge({
+            name: 'peers_total',
+            help: 'The total amount of peers with direct connection.',
+            labelNames: [],
+            registers: [this.registry],
+        }),
     };
 
     static initialize(peerNode: PeerNode, wsNode: WebsocketsNode) {
@@ -135,6 +147,14 @@ export class Prometheus {
     static peerNetwork(dataReceived: bigint, dataSent: bigint, protocol: string): void {
         this.metrics.peerDataReceived.set(this.getPeerTags(protocol), Number(dataReceived));
         this.metrics.peerDataSent.set(this.getPeerTags(protocol), Number(dataSent));
+    }
+
+    static peersWatchingApp(peers: number, appId: string): void {
+        this.metrics.peersWatchingApp.set(this.getWsTags(appId), peers);
+    }
+
+    static peers(peers: number): void {
+        this.metrics.peers.set(peers);
     }
 
     protected static getWsTags(appId: string): WsNamespaceTags {
