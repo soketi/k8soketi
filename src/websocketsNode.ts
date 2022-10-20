@@ -75,7 +75,15 @@ export class WebsocketsNode {
 
     async stop(): Promise<void> {
         this.closing = true;
-        uWS.us_listen_socket_close(this.process);
+
+        return new Promise(async (resolve) => {
+            await this.prepareForClosing();
+
+            setTimeout(() => {
+                uWS.us_listen_socket_close(this.process);
+                resolve();
+            }, this.options.websockets.server.gracePeriod * 1_000);
+        });
     }
 
     async subscribeToApp(appId: string): Promise<void> {
@@ -253,6 +261,12 @@ export class WebsocketsNode {
         await AppManager.initialize(this.options);
         await QueueManager.initialize(this.options);
         await PusherWebhookSender.initialize(this.options);
+    }
+
+    protected async prepareForClosing(): Promise<void> {
+        await QueueManager.disconnect();
+        await CacheManager.disconnect();
+        await RateLimiter.disconnect();
     }
 
     namespace(appId: string): Namespace {

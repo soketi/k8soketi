@@ -124,6 +124,7 @@ export default class Server {
             server: {
                 host: '0.0.0.0',
                 port: 6001,
+                gracePeriod: 5e3,
             },
             webhooks: {
                 batching: {
@@ -182,8 +183,6 @@ export default class Server {
     }
 
     async stop(): Promise<void> {
-        // TODO: Grace period
-
         Log.info('🛑 Closing the peer node...', true);
         await this.peerNode.stop();
 

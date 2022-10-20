@@ -30,7 +30,6 @@ export class CacheManager {
         return this.driver.set(key, value, ttlSeconds);
     }
 
-    // TODO: Call this function
     static async disconnect(): Promise<void> {
         return this.driver.disconnect();
     }

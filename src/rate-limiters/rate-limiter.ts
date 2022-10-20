@@ -34,7 +34,6 @@ export class RateLimiter {
         return this.driver.createNewRateLimiter(appId, maxPoints);
     }
 
-    // TODO: Call this function
     static async disconnect(): Promise<void> {
         return this.driver.disconnect();
     }

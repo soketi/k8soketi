@@ -49,10 +49,16 @@ export class PeerNode {
                 listen: [`/ip4/${host}/tcp/${port}`],
             },
             transports: [
-                new TCP(), // TODO: Timeout settings
+                new TCP({
+                    // TODO: Timeout settings
+                }),
             ],
             streamMuxers: [
-                new Mplex(), // TODO: Mplex settings
+                new Mplex({
+                    maxMsgSize: 1 * 1024 * 1024,
+                    maxStreamBufferSize: 4 * 1024 * 1024,
+                    // TODO: Mplex settings
+                }),
             ],
             connectionEncryption: [
                 new Noise(), // TODO: Use SSL keys

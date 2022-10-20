@@ -93,6 +93,7 @@ export interface Options {
         server: {
             host: string;
             port: number;
+            gracePeriod: number;
         };
         webhooks: {
             batching: {

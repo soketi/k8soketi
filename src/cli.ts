@@ -24,7 +24,8 @@ const registerStartCommand = async () => {
         .addOption(new Option('--dns-discovery-host <dnsDiscoveryHost>', 'The host on which the peers will discovery through.').env('DNS_DISCOVERY_HOST').default('127.0.0.1'))
         .addOption(new Option('--dns-discovery-port <dnsDiscoveryPort>', 'The port on which the peers will discover through.').env('DNS_DISCOVERY_PORT').default(16001).argParser(v => parseInt(v)))
         .addOption(new Option('--dns-server-host <dnsServerHost>', 'The host of the DNS server to query to get the other peers.').env('DNS_SERVER_HOST').default('127.0.0.1'))
-        .addOption(new Option('--dns-server-port <dnsServerPort>', 'The port on the DNS server to query to get the other peers.').env('DNS_SERVER_PORT').default(53).argParser(v => parseInt(v)));
+        .addOption(new Option('--dns-server-port <dnsServerPort>', 'The port on the DNS server to query to get the other peers.').env('DNS_SERVER_PORT').default(53).argParser(v => parseInt(v)))
+        .addOption(new Option('--ws-grace-period <wsGracePeriod>', 'The amount of time to wait (in seconds) for the connections to be evicted, before closing the WebSockets server.').env('WS_GRACE_PERIOD').default(5e3).argParser(v => parseInt(v)));
 
     // Cache Managers
     cmdx.addOption(new Option('--cache-manager <cacheManager>', 'The cache driver to use.').default('memory').choices(['memory']));
@@ -86,6 +87,7 @@ const registerStartCommand = async () => {
             'websockets.dns.discovery.port': options.dnsDiscoveryPort,
             'websockets.dns.server.host': options.dnsServerHost,
             'websockets.dns.server.port': options.dnsServerPort,
+            'websockets.server.gracePeriod': options.wsGracePeriod,
 
             // Cache Managers
             'websockets.cacheManagers.driver': options.cacheManager,
