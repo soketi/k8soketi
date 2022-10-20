@@ -2,14 +2,16 @@ import { App } from './../app-managers/app';
 import { RateLimiterAbstract, RateLimiterRes } from 'rate-limiter-flexible';
 import { WebSocket } from 'uWebSockets.js';
 
+export interface ConsumptionResponseHeaders {
+    'Retry-After'?: number;
+    'X-RateLimit-Limit'?: number;
+    'X-RateLimit-Remaining'?: number;
+};
+
 export interface ConsumptionResponse {
     canContinue: boolean;
     rateLimiterRes: RateLimiterRes|null;
-    headers: {
-        'Retry-After'?: number;
-        'X-RateLimit-Limit'?: number;
-        'X-RateLimit-Remaining'?: number;
-    };
+    headers: ConsumptionResponseHeaders;
 }
 
 export interface RateLimiterInterface {

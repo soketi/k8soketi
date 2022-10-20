@@ -1,5 +1,5 @@
 import { App } from './../app-managers/app';
-import { ConsumptionResponse, RateLimiterInterface } from './rate-limiter-interface';
+import { ConsumptionResponse, ConsumptionResponseHeaders, RateLimiterInterface } from './rate-limiter-interface';
 import { Options } from '../options';
 import { RateLimiterAbstract, RateLimiterMemory, RateLimiterRes } from 'rate-limiter-flexible';
 import { WebSocket } from '../websocket';
@@ -74,27 +74,28 @@ export class LocalRateLimiter implements RateLimiterInterface {
             };
         }
 
-        // TODO: Transfer to method in class
-        let calculateHeaders = (rateLimiterRes: RateLimiterRes) => ({
-            'Retry-After': rateLimiterRes.msBeforeNext / 1000,
-            'X-RateLimit-Limit': maxPoints,
-            'X-RateLimit-Remaining': rateLimiterRes.remainingPoints,
-        });
-
         let rateLimiter = await this.initializeRateLimiter(app.id, eventKey, maxPoints);
 
         return rateLimiter.consume(eventKey, points).then((rateLimiterRes: RateLimiterRes) => {
             return {
                 canContinue: true,
                 rateLimiterRes,
-                headers: calculateHeaders(rateLimiterRes),
+                headers: this.calculateHeaders(rateLimiterRes, maxPoints),
             };
         }).catch((rateLimiterRes: RateLimiterRes) => {
             return {
                 canContinue: false,
                 rateLimiterRes,
-                headers: calculateHeaders(rateLimiterRes),
+                headers: this.calculateHeaders(rateLimiterRes, maxPoints),
             };
         });
+    }
+
+    protected calculateHeaders(rateLimiterRes: RateLimiterRes, maxPoints: number): ConsumptionResponseHeaders {
+        return {
+            'Retry-After': rateLimiterRes.msBeforeNext / 1000,
+            'X-RateLimit-Limit': maxPoints,
+            'X-RateLimit-Remaining': rateLimiterRes.remainingPoints,
+        };
     }
 }
