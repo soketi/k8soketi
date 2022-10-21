@@ -94,6 +94,8 @@ export interface Options {
             host: string;
             port: number;
             gracePeriod: number;
+            maxBackpressureInMb: number;
+            maxPayloadLengthInMb: number;
         };
         webhooks: {
             batching: {

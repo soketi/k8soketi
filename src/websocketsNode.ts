@@ -193,8 +193,8 @@ export class WebsocketsNode {
     protected async registerPusherRoutes(): Promise<void> {
         this.app.ws('/app/:key', {
             idleTimeout: 120,
-            maxBackpressure: 1024 * 1024, // TODO: Configure
-            maxPayloadLength: 100 * 1024 * 1024, // TODO: Configure
+            maxBackpressure: this.options.websockets.server.maxBackpressureInMb * 1024 * 1024,
+            maxPayloadLength: this.options.websockets.server.maxPayloadLengthInMb * 1024 * 1024,
             open: async (ws: WebSocket) => {
                 return await PusherWebsocketsHandler.onOpen(ws);
             },

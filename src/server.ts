@@ -125,6 +125,8 @@ export default class Server {
                 host: '0.0.0.0',
                 port: 6001,
                 gracePeriod: 5e3,
+                maxBackpressureInMb: 1,
+                maxPayloadLengthInMb: 100,
             },
             webhooks: {
                 batching: {

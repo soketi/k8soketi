@@ -25,7 +25,10 @@ const registerStartCommand = async () => {
         .addOption(new Option('--dns-discovery-port <dnsDiscoveryPort>', 'The port on which the peers will discover through.').env('DNS_DISCOVERY_PORT').default(16001).argParser(v => parseInt(v)))
         .addOption(new Option('--dns-server-host <dnsServerHost>', 'The host of the DNS server to query to get the other peers.').env('DNS_SERVER_HOST').default('127.0.0.1'))
         .addOption(new Option('--dns-server-port <dnsServerPort>', 'The port on the DNS server to query to get the other peers.').env('DNS_SERVER_PORT').default(53).argParser(v => parseInt(v)))
-        .addOption(new Option('--ws-grace-period <wsGracePeriod>', 'The amount of time to wait (in seconds) for the connections to be evicted, before closing the WebSockets server.').env('WS_GRACE_PERIOD').default(5e3).argParser(v => parseInt(v)));
+        // WS Configuration
+        .addOption(new Option('--ws-grace-period <wsGracePeriod>', 'The amount of time to wait (in seconds) for the connections to be evicted, before closing the WebSockets server.').env('WS_GRACE_PERIOD').default(5e3).argParser(v => parseInt(v)))
+        .addOption(new Option('--ws-max-backpressure-in-mb <wsMaxBackpressureInMb>', 'The max. backpressure (in MB). Read more: https://github.com/uNetworking/uWebSockets.js/blob/master/examples/Backpressure.js').env('WS_MAX_BACKPRESSURE_IN_MB').default(1).argParser(v => parseInt(v)))
+        .addOption(new Option('--ws-max-payload-in-mb <wsMaxPayloadInMb>', 'If a connection sends a payload greater than this amount (in MB), it will forcefully close the connection.').env('WS_MAX_PAYLOAD_IN_MB').default(100).argParser(v => parseInt(v)));
 
     // Cache Managers
     cmdx.addOption(new Option('--cache-manager <cacheManager>', 'The cache driver to use.').default('memory').choices(['memory']));
@@ -88,6 +91,8 @@ const registerStartCommand = async () => {
             'websockets.dns.server.host': options.dnsServerHost,
             'websockets.dns.server.port': options.dnsServerPort,
             'websockets.server.gracePeriod': options.wsGracePeriod,
+            'websockets.server.maxBackpressureInMb': options.wsMaxBackpressureInMb,
+            'websockets.server.maxPayloadLengthInMb': options.wsMaxPayloadInMb,
 
             // Cache Managers
             'websockets.cacheManagers.driver': options.cacheManager,
