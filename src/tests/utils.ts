@@ -1,8 +1,9 @@
 import bodyParser from 'body-parser';
-import express from 'express';
+import express, { Application } from 'express';
 import Pusher from 'pusher';
 import PusherJS, { Options } from 'pusher-js';
-import Server from '../server';
+import { Server } from 'http';
+import SoketiServer from '../server';
 import tcpPortUsed from 'tcp-port-used';
 
 export interface ShouldRunConditions {
@@ -11,8 +12,8 @@ export interface ShouldRunConditions {
 }
 
 export class Utils {
-    public static wsServers: Server[] = [];
-    public static httpServers: any[] = [];
+    public static wsServers: SoketiServer[] = [];
+    public static httpServers: Server[] = [];
 
     static async waitForPortsToFreeUp(): Promise<any> {
         return Promise.all([
@@ -23,7 +24,7 @@ export class Utils {
         ]);
     }
 
-    static newServer(options: any = {}, callback: (server: Server) => void): void {
+    static newServer(options: any = {}, callback: (server: SoketiServer) => void): void {
         options = {
             'websockets.appManagers.drivers.array.apps.0.maxBackendEventsPerSecond': 200,
             'websockets.appManagers.drivers.array.apps.0.maxClientEventsPerSecond': 200,
@@ -41,14 +42,14 @@ export class Utils {
             'websockets.server.port': options.port || 6001,
         };
 
-        let server = new Server(options);
+        let server = new SoketiServer(options);
 
         server.start().then(() => {
             callback(server);
         });
     }
 
-    static newClonedServer(server: Server, options = {}, callback: (server: Server) => void): void {
+    static newClonedServer(server: SoketiServer, options = {}, callback: (server: SoketiServer) => void): void {
         return this.newServer({
             ...server.options,
             ...options,
@@ -56,7 +57,7 @@ export class Utils {
     }
 
     static newWebhookServer(requestHandler: CallableFunction, onReadyCallback: CallableFunction): any {
-        let webhooksApp = express();
+        let webhooksApp = express() as Application;
 
         webhooksApp.use(bodyParser.json());
 
@@ -67,7 +68,7 @@ export class Utils {
             next();
         });
 
-        webhooksApp.post('*', requestHandler);
+        webhooksApp.post('*', (req, res) => requestHandler(req, res));
 
         let server = webhooksApp.listen(3001, () => {
             server.on('error', err => {
