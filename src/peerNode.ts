@@ -64,23 +64,22 @@ export class PeerNode {
                 new Mplex({
                     maxMsgSize: 1 * 1024 * 1024,
                     maxStreamBufferSize: 4 * 1024 * 1024,
-                    // TODO: Mplex settings
                 }),
             ],
             connectionEncryption: [
-                new Noise(), // TODO: Use SSL keys
+                new Noise(),
             ],
             pubsub: new GossipSub({
-                allowPublishToZeroPeers: true, // TODO: Pubsub settings
+                allowPublishToZeroPeers: true,
                 emitSelf: false,
                 heartbeatInterval: 5e3,
             }),
             peerDiscovery: [
                 new MulticastDNS({
-                    interval: 5e3,
-                    // TODO: DNS IP this.options.websockets.dns.server.host
+                    interval: 1e3,
                     port: this.options.websockets.dns.server.port,
                     broadcast: true,
+                    serviceTag: this.options.websockets.dns.server.tag,
                 }),
             ],
             metrics: {

@@ -50,6 +50,7 @@ export interface Options {
             server: {
                 host: string;
                 port: number;
+                tag: string;
             };
         };
         http: {

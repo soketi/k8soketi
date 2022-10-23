@@ -81,6 +81,7 @@ export default class Server {
                 server: {
                     host: '127.0.0.1',
                     port: 53,
+                    tag: 'ipfs.local',
                 },
             },
             http: {
