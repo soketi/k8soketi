@@ -63,7 +63,7 @@
     "@chainsafe/libp2p-noise": "^8.0.1",
     "@libp2p/mdns": "^3.0.1",
     "@libp2p/mplex": "^5.2.4",
-    "@libp2p/tcp": "^3.1.2",
+    "@libp2p/tcp": "^5.0.1",
     "@rxfork/sqs-consumer": "^6.0.0",
     "arraybuffer-to-string": "^1.0.2",
     "axios": "^1.1.3",
