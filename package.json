@@ -75,7 +75,7 @@
     "prom-client": "^14.1.0",
     "pusher": "^5.1.1-beta",
     "query-string": "^7.1.1",
-    "rate-limiter-flexible": "^2.3.12",
+    "rate-limiter-flexible": "^2.4.0",
     "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js.git#v20.10.0"
   },
   "bin": {
