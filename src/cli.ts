@@ -21,10 +21,12 @@ const registerStartCommand = async () => {
     // Connection
     cmdx.addOption(new Option('--host <host>', 'The host to run the WebSockets/HTTP server on.').env('HOST').default('0.0.0.0'))
         .addOption(new Option('--port <port>', 'The port to run the WebSockets/HTTP server on.').env('PORT').default(6001).argParser(v => parseInt(v)))
+        // Peer Configuration
         .addOption(new Option('--dns-discovery-host <dnsDiscoveryHost>', 'The host on which the peers will discovery through.').env('DNS_DISCOVERY_HOST').default('127.0.0.1'))
-        .addOption(new Option('--dns-server-host <dnsServerHost>', 'The host of the DNS server to query to get the other peers.').env('DNS_SERVER_HOST').default('127.0.0.1'))
-        .addOption(new Option('--dns-server-port <dnsServerPort>', 'The port on the DNS server to query to get the other peers.').env('DNS_SERVER_PORT').default(53).argParser(v => parseInt(v)))
-        .addOption(new Option('--dns-server-tag <dnsServerTag>', 'The tag name for the query to get the other peers.').env('DNS_SERVER_TAG').default('ipfs.local'))
+        .addOption(new Option('--dns-server-host <dnsServerHost>', 'The host of the DNS server to query to.').env('DNS_SERVER_HOST').default('127.0.0.1'))
+        .addOption(new Option('--dns-server-port <dnsServerPort>', 'The port of the DNS server to query to.').env('DNS_SERVER_PORT').default(53).argParser(v => parseInt(v)))
+        .addOption(new Option('--dns-server-tag <dnsServerTag>', 'The tag name for the DNS query to get the other peers.').env('DNS_SERVER_TAG').default('ipfs.local'))
+        .addOption(new Option('--peer-inactivity-timeout <peerInactivityTimeout>', 'The amount of time (in seconds) that should pass in order to disconnect a node from the P2P network.').env('PEER_INACTIVITY_TIMEOUT').default(10))
         // WS Configuration
         .addOption(new Option('--ws-grace-period <wsGracePeriod>', 'The amount of time to wait (in seconds) for the connections to be evicted, before closing the WebSockets server.').env('WS_GRACE_PERIOD').default(1).argParser(v => parseInt(v)))
         .addOption(new Option('--ws-max-backpressure-in-mb <wsMaxBackpressureInMb>', 'The max. backpressure (in MB). Read more: https://github.com/uNetworking/uWebSockets.js/blob/master/examples/Backpressure.js').env('WS_MAX_BACKPRESSURE_IN_MB').default(1).argParser(v => parseInt(v)))
@@ -86,13 +88,15 @@ const registerStartCommand = async () => {
             // Connection
             'websockets.server.host': options.host,
             'websockets.server.port': options.port,
-            'websockets.dns.discovery.host': options.dnsDiscoveryHost,
-            'websockets.dns.server.host': options.dnsServerHost,
-            'websockets.dns.server.port': options.dnsServerPort,
-            'websockets.dns.server.tag': options.dnsServerTag,
             'websockets.server.gracePeriod': options.wsGracePeriod,
             'websockets.server.maxBackpressureInMb': options.wsMaxBackpressureInMb,
             'websockets.server.maxPayloadLengthInMb': options.wsMaxPayloadInMb,
+            // Peer
+            'peer.dns.discovery.host': options.dnsDiscoveryHost,
+            'peer.dns.server.host': options.dnsServerHost,
+            'peer.dns.server.port': options.dnsServerPort,
+            'peer.dns.server.tag': options.dnsServerTag,
+            'peer.inactivityTimeout': options.peerInactivityTimeout,
 
             // Cache Managers
             'websockets.cacheManagers.driver': options.cacheManager,
@@ -133,7 +137,6 @@ const registerStartCommand = async () => {
             'metrics.enabled': options.metrics,
             'metrics.server.host': options.metricsServerHost,
             'metrics.server.port': options.metricsServerPort,
-            'metrics.server.tag': options.dnsServerTag,
 
             // CORS
             'cors.credentials': !options.disableCorsCredentials,

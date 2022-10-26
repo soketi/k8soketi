@@ -21,6 +21,19 @@ export interface Options {
             port: number;
         };
     };
+    peer: {
+        dns: {
+            discovery: {
+                host: string;
+            };
+            server: {
+                host: string;
+                port: number;
+                tag: string;
+            };
+        };
+        inactivityTimeout: number;
+    },
     websockets: {
         appManagers: {
             cache: {
@@ -41,16 +54,6 @@ export interface Options {
         };
         cacheManagers: {
             driver: 'memory';
-        };
-        dns: {
-            discovery: {
-                host: string;
-            };
-            server: {
-                host: string;
-                port: number;
-                tag: string;
-            };
         };
         http: {
             acceptTraffic: {

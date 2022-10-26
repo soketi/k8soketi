@@ -39,6 +39,19 @@ export default class Server {
                 port: 9601,
             },
         },
+        peer: {
+            dns: {
+                discovery: {
+                    host: '127.0.0.1',
+                },
+                server: {
+                    host: '127.0.0.1',
+                    port: 53,
+                    tag: 'ipfs.local',
+                },
+            },
+            inactivityTimeout: 10,
+        },
         websockets: {
             appManagers: {
                 cache: {
@@ -72,16 +85,6 @@ export default class Server {
             },
             cacheManagers: {
                 driver: 'memory',
-            },
-            dns: {
-                discovery: {
-                    host: '127.0.0.1',
-                },
-                server: {
-                    host: '127.0.0.1',
-                    port: 53,
-                    tag: 'ipfs.local',
-                },
             },
             http: {
                 acceptTraffic: {

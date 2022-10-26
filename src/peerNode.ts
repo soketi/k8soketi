@@ -49,7 +49,7 @@ export class PeerNode {
     }
 
     async initialize(): Promise<void> {
-        let { host } = this.options.websockets.dns.discovery;
+        let { host } = this.options.peer.dns.discovery;
 
         this.libp2p = await createLibp2p({
             addresses: {
@@ -70,8 +70,8 @@ export class PeerNode {
             },
             transports: [
                 tcp({
-                    inboundSocketInactivityTimeout: 10e3, // TODO: Configurable
-                    outboundSocketInactivityTimeout: 10e3, // TODO: Configurable
+                    inboundSocketInactivityTimeout: this.options.peer.inactivityTimeout * 1000,
+                    outboundSocketInactivityTimeout: this.options.peer.inactivityTimeout * 1000,
                     socketCloseTimeout: this.options.websockets.server.gracePeriod * 1000,
                 }),
             ],
@@ -94,9 +94,9 @@ export class PeerNode {
             peerDiscovery: [
                 mdns({
                     interval: 5e3, // TODO: Configurable
-                    port: this.options.websockets.dns.server.port,
+                    port: this.options.peer.dns.server.port,
                     broadcast: true,
-                    serviceTag: this.options.websockets.dns.server.tag,
+                    serviceTag: this.options.peer.dns.server.tag,
                 }),
             ],
             metrics: {
@@ -110,10 +110,9 @@ export class PeerNode {
     }
 
     protected async registerPings(): Promise<void> {
-        // TODO: Configurable, max 1/3 of inboundSocketInactivityTimeout
         setInterval(() => {
             Promise.all(this.peers.map(peer => this.libp2p.ping(peer)));
-        }, 3e3);
+        }, (this.options.peer.inactivityTimeout/3) * 1000);
     }
 
     protected async registerPeerDiscovery(): Promise<void> {
