@@ -45,7 +45,6 @@ export interface Options {
         dns: {
             discovery: {
                 host: string;
-                port: number;
             };
             server: {
                 host: string;

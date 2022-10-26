@@ -76,7 +76,6 @@ export default class Server {
             dns: {
                 discovery: {
                     host: '127.0.0.1',
-                    port: 15353,
                 },
                 server: {
                     host: '127.0.0.1',
@@ -125,7 +124,7 @@ export default class Server {
             server: {
                 host: '0.0.0.0',
                 port: 6001,
-                gracePeriod: 5e3,
+                gracePeriod: 1,
                 maxBackpressureInMb: 1,
                 maxPayloadLengthInMb: 100,
             },
@@ -194,7 +193,7 @@ export default class Server {
 
         if (this.options.metrics.enabled) {
             Log.info('🛑 Closing the Metrics server...', true);
-            await this.websocketsNode.stop();
+            await this.metricsNode.stop();
         }
     }
 

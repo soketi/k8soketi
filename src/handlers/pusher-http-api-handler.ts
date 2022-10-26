@@ -21,7 +21,10 @@ export interface MessageCheckError {
 
 export class PusherHttpApiHandler extends HttpHandler {
     static async healthCheck(res: HttpResponse): Promise<HttpResponse> {
-        return HttpUtils.send(res, 'OK');
+        return HttpUtils.sendJson(res, {
+            status: 'OK',
+            peer: this.wsNode.peerNode.peerId.toString(),
+        });
     }
 
     static async ready(res: HttpResponse): Promise<HttpResponse> {

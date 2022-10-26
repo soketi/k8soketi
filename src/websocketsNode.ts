@@ -110,7 +110,7 @@ export class WebsocketsNode {
             return;
         }
 
-        await this.peerNode.makeRequestToAllPeers({
+        this.peerNode.makeRequestToAllPeers({
             action: 'evicted-app',
             data: { appId },
         });

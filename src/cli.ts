@@ -22,12 +22,11 @@ const registerStartCommand = async () => {
     cmdx.addOption(new Option('--host <host>', 'The host to run the WebSockets/HTTP server on.').env('HOST').default('0.0.0.0'))
         .addOption(new Option('--port <port>', 'The port to run the WebSockets/HTTP server on.').env('PORT').default(6001).argParser(v => parseInt(v)))
         .addOption(new Option('--dns-discovery-host <dnsDiscoveryHost>', 'The host on which the peers will discovery through.').env('DNS_DISCOVERY_HOST').default('127.0.0.1'))
-        .addOption(new Option('--dns-discovery-port <dnsDiscoveryPort>', 'The port on which the peers will discover through.').env('DNS_DISCOVERY_PORT').default(16001).argParser(v => parseInt(v)))
         .addOption(new Option('--dns-server-host <dnsServerHost>', 'The host of the DNS server to query to get the other peers.').env('DNS_SERVER_HOST').default('127.0.0.1'))
         .addOption(new Option('--dns-server-port <dnsServerPort>', 'The port on the DNS server to query to get the other peers.').env('DNS_SERVER_PORT').default(53).argParser(v => parseInt(v)))
         .addOption(new Option('--dns-server-tag <dnsServerTag>', 'The tag name for the query to get the other peers.').env('DNS_SERVER_TAG').default('ipfs.local'))
         // WS Configuration
-        .addOption(new Option('--ws-grace-period <wsGracePeriod>', 'The amount of time to wait (in seconds) for the connections to be evicted, before closing the WebSockets server.').env('WS_GRACE_PERIOD').default(5e3).argParser(v => parseInt(v)))
+        .addOption(new Option('--ws-grace-period <wsGracePeriod>', 'The amount of time to wait (in seconds) for the connections to be evicted, before closing the WebSockets server.').env('WS_GRACE_PERIOD').default(1).argParser(v => parseInt(v)))
         .addOption(new Option('--ws-max-backpressure-in-mb <wsMaxBackpressureInMb>', 'The max. backpressure (in MB). Read more: https://github.com/uNetworking/uWebSockets.js/blob/master/examples/Backpressure.js').env('WS_MAX_BACKPRESSURE_IN_MB').default(1).argParser(v => parseInt(v)))
         .addOption(new Option('--ws-max-payload-in-mb <wsMaxPayloadInMb>', 'If a connection sends a payload greater than this amount (in MB), it will forcefully close the connection.').env('WS_MAX_PAYLOAD_IN_MB').default(100).argParser(v => parseInt(v)));
 
@@ -36,7 +35,7 @@ const registerStartCommand = async () => {
 
     // App Managers
     cmdx.addOption(new Option('--app-manager <appManager>', 'The app manager driver to use.').default('array').choices(['array', 'dynamodb']))
-        .addOption(new Option('--app-manager-cache', 'Allow app managers to cache app responses.').default(false).argParser(v => Boolean(v)))
+        .addOption(new Option('--app-manager-cache', 'Allow app managers to cache app responses.').default(false))
         .addOption(new Option('--app-manager-cache-ttl <appManagerCacheTtl>', 'The TTL of cache for app responses.').default(-1).argParser(v => parseInt(v)))
         // DynamoDB
         .addOption(new Option('--app-manager-dynamodb-table <appManagerDynamodbTable>', 'The DynamoDB table name.').env('APP_MANAGER_DYNAMODB_TABLE').default('').implies({ appManager: 'dynamodb' }))
@@ -50,7 +49,7 @@ const registerStartCommand = async () => {
         .addOption(new Option('--queue-sqs-options <queueSqsOptions>', 'The JSON-formatted string with extra SQS options. Read more: https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/configuring-the-jssdk.html').default('{}').argParser(v => JSON.parse(v)).implies({ queueManager: 'sqs' }))
         .addOption(new Option('--queue-sqs-consumer-options <queueSqsConsumerOptions>', 'The JSON-formatted string with extra SQS Consumer options. Read more: https://github.com/rxfork/sqs-consumer').default('{}').argParser(v => JSON.parse(v)).implies({ queueManager: 'sqs' }))
         .addOption(new Option('--queue-sqs-url <queueSqsUrl>', 'The SQS queue URL.').env('QUEUE_SQS_URL').default('').implies({ queueManager: 'sqs' }))
-        .addOption(new Option('--queue-sqs-batching', 'Process the events in batch.').default(false).argParser(v => Boolean(v)).implies({ queueManager: 'sqs' }))
+        .addOption(new Option('--queue-sqs-batching', 'Process the events in batch.').default(false).implies({ queueManager: 'sqs' }))
         .addOption(new Option('--queue-sqs-batch-size <queueSqsBatchSize>', 'The maximum amount of jobs to wait before polling once.').default(1).argParser(v => parseInt(v)).implies({ queueManager: 'sqs', queueSqsBatching: true }))
         .addOption(new Option('--queue-sqs-polling-wait-time-ms <queueSqsPollingWaitTimeMs>', 'The polling time (in ms) for the queue.').default(0).argParser(v => parseFloat(v)).implies({ queueManager: 'sqs' }))
         .addOption(new Option('--queue-sqs-endpoint <queueSqsEndpoint>', 'The API URL of the SQS service.').env('QUEUE_SQS_ENDPOINT').default('').implies({ queueManager: 'sqs' }));
@@ -67,12 +66,12 @@ const registerStartCommand = async () => {
         .addOption(new Option('--accept-traffic-threshold <acceptTrafficThreshold>', 'The min. used memory percent after the /accept-traffic endpoint will return 500 errors (used to probe traffic redirection).').default(90));
 
     // Metrics
-    cmdx.addOption(new Option('--metrics', 'Enable the metrics endpoints.').default(false).argParser(v => Boolean(v)))
+    cmdx.addOption(new Option('--metrics', 'Enable the metrics endpoints.').default(false))
         .addOption(new Option('--metrics-server-host <metricsServerHost>', 'The host of the metrics server.').env('METRICS_SERVER_HOST').default('127.0.0.1').implies({ metrics: true }))
         .addOption(new Option('--metrics-server-port <metricsServerPort>', 'The port on the metrics server.').env('METRICS_SERVER_PORT').default(9601).argParser(v => parseInt(v)).implies({ metrics: true }))
 
     // CORS
-    cmdx.addOption(new Option('--disable-cors-credentials', 'Disable credentials support for CORS').default(false).argParser(v => Boolean(v)))
+    cmdx.addOption(new Option('--disable-cors-credentials', 'Disable credentials support for CORS').default(false))
         .addOption(new Option('--cors-origins <corsOrigins>', 'A comma-separated list of origins to allow through CORS.').default('*'))
         .addOption(new Option('--cors-methods <corsMethods>', 'A comma-separated list of HTTP methods to allow through CORS.').default(corsMethods.join(',')))
         .addOption(new Option('--cors-headers <corsHeaders>', 'A comma-separated list of headers to allow throuh CORS').default(corsHeaders.join(',')))
@@ -88,7 +87,6 @@ const registerStartCommand = async () => {
             'websockets.server.host': options.host,
             'websockets.server.port': options.port,
             'websockets.dns.discovery.host': options.dnsDiscoveryHost,
-            'websockets.dns.discovery.port': options.dnsDiscoveryPort,
             'websockets.dns.server.host': options.dnsServerHost,
             'websockets.dns.server.port': options.dnsServerPort,
             'websockets.dns.server.tag': options.dnsServerTag,

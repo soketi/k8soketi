@@ -3,16 +3,16 @@ import { createLibp2p, Libp2p } from 'libp2p';
 import { fromString } from 'uint8arrays/from-string';
 import { GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Log } from './log';
-import { Mplex } from '@libp2p/mplex';
-import { MulticastDNS } from '@libp2p/mdns';
-import { Noise } from '@chainsafe/libp2p-noise';
+import { mplex } from '@libp2p/mplex';
+import { mdns } from '@libp2p/mdns';
+import { noise } from '@chainsafe/libp2p-noise';
 import { Options } from './options';
 import { PeerId } from '@libp2p/interface-peer-id';
 import { PeerInfo } from '@libp2p/interface-peer-info';
 import { pipe } from 'it-pipe';
 import { Prometheus } from './prometheus';
 import { PubsubMessage } from './message';
-import { TCP } from '@libp2p/tcp';
+import { tcp } from '@libp2p/tcp';
 import { toString } from 'uint8arrays/to-string';
 
 export interface RequestData {
@@ -49,34 +49,51 @@ export class PeerNode {
     }
 
     async initialize(): Promise<void> {
-        let { host, port } = this.options.websockets.dns.discovery;
+        let { host } = this.options.websockets.dns.discovery;
 
         this.libp2p = await createLibp2p({
             addresses: {
-                listen: [`/ip4/${host}/tcp/${port}`],
+                listen: [`/ip4/${host}/tcp/0`],
+            },
+            relay: {
+                enabled: true,
+                autoRelay: {
+                    enabled: true,
+                    maxListeners: 10,
+                },
+                hop: {
+                  enabled: true
+                },
+                advertise: {
+                  enabled: true,
+                }
             },
             transports: [
-                new TCP({
-                    // TODO: Timeout settings
+                tcp({
+                    inboundSocketInactivityTimeout: 10e3, // TODO: Configurable
+                    outboundSocketInactivityTimeout: 10e3, // TODO: Configurable
+                    socketCloseTimeout: this.options.websockets.server.gracePeriod * 1000,
                 }),
             ],
             streamMuxers: [
-                new Mplex({
-                    maxMsgSize: 1 * 1024 * 1024,
-                    maxStreamBufferSize: 4 * 1024 * 1024,
+                mplex({
+                    maxMsgSize: 1 * 1024 * 1024, // TODO: Configurable
+                    maxStreamBufferSize: 4 * 1024 * 1024, // TODO: Configurable
                 }),
             ],
             connectionEncryption: [
-                new Noise(),
+                noise({
+                    //
+                }),
             ],
-            pubsub: new GossipSub({
+            pubsub: (components) => new GossipSub(components, {
                 allowPublishToZeroPeers: true,
                 emitSelf: false,
-                heartbeatInterval: 5e3,
+                heartbeatInterval: 5e3, // TODO: Configurable
             }),
             peerDiscovery: [
-                new MulticastDNS({
-                    interval: 1e3,
+                mdns({
+                    interval: 5e3, // TODO: Configurable
                     port: this.options.websockets.dns.server.port,
                     broadcast: true,
                     serviceTag: this.options.websockets.dns.server.tag,
@@ -87,15 +104,28 @@ export class PeerNode {
             },
         });
 
+        await this.registerPings();
         await this.registerPeerDiscovery();
         await this.registerPubSubMessageHandler();
     }
 
+    protected async registerPings(): Promise<void> {
+        // TODO: Configurable, max 1/3 of inboundSocketInactivityTimeout
+        setInterval(() => {
+            Promise.all(this.peers.map(peer => this.libp2p.ping(peer)));
+        }, 3e3);
+    }
+
     protected async registerPeerDiscovery(): Promise<void> {
-        // TODO: Fix too many logs
-        // this.onNewPeerConnection(async event => {
-        //     Log.info(`[Network][Connection] Connected to ${event.detail.remoteAddr}/p2p/${event.detail.remotePeer.toString()}`);
-        // });
+        this.onNewPeerConnection(async event => {
+            Log.info(`[Network][Connection] Connected to ${event.detail.remoteAddr}/p2p/${event.detail.remotePeer.toString()}`);
+            Prometheus.peers(this.peers.length);
+        });
+
+        this.onPeerDisconnection(async event => {
+            Log.info(`[Network][Connection] Disconnected from ${event.detail.remoteAddr}/p2p/${event.detail.remotePeer.toString()}`);
+            Prometheus.peers(this.peers.length);
+        });
 
         this.onPeerDiscovery(async event => {
             // TODO: Fix too many logs
@@ -170,7 +200,7 @@ export class PeerNode {
             await pipe(stream, async (source) => {
                 for await (let data of source) {
                     let stringData = toString(data.subarray());
-                        Log.info(`[Request][Stream: ${stream.id}][/v${version}/${action}] Received request: ${stringData}`);
+                        Log.info(`[Request][/v${version}/${action}][Stream: ${stream.id}] Received request: ${stringData}`);
 
                         let responseData = await onRequest(
                             JSON.parse(stringData),
@@ -179,7 +209,7 @@ export class PeerNode {
                         );
 
                         stream.sink([fromString(responseData + '')]);
-                        Log.info(`[Request][Stream: ${stream.id}][/v${version}/${action}] Replied with: ${responseData}`);
+                        Log.info(`[Request][/v${version}/${action}][Stream: ${stream.id}] Replied with: ${responseData}`);
                     }
                 }
             );
@@ -192,15 +222,16 @@ export class PeerNode {
                 let stream = await this.libp2p.dialProtocol(peerId, `/v${version}/${action}`);
                 let requestData = fromString(JSON.stringify(data));
 
-                Log.info(`[Request][/v${version}/${action}] Making request: ${requestData}`);
+                Log.info(`[Request][/v${version}/${action}][Stream: ${stream.id}] Making request: ${JSON.stringify(data)}`);
 
                 this.watchStreamForMetrics(peerId, stream, `/v${version}/${action}`);
 
                 pipe([requestData], stream, async (source) => {
                     for await (let data of source) {
-                        resolve(toString(data.subarray()));
+                        let response = toString(data.subarray());
+                        Log.info(`[Request][/v${version}/${action}][Stream: ${stream.id}] Received: ${response}`);
+                        resolve(response);
                     }
-
                 });
             } catch (e) {
                 Log.warning(`[Request][/v${version}/${action}] ${e}`);
@@ -209,15 +240,13 @@ export class PeerNode {
     }
 
     async makeRequestToAllPeers({ version = '1', action, data }: PeerRequestData): Promise<string[]> {
-        let peers = this.peers;
-
-        if (peers.length === 0) {
+        if (this.peers.length === 0) {
             return [];
         }
 
         let promises = [];
 
-        for await (let peerId of peers) {
+        for await (let peerId of this.peers) {
             promises.push(
                 this.makeRequest({
                     peerId,
@@ -228,7 +257,7 @@ export class PeerNode {
             );
         }
 
-        Log.info(`[Request][/v${version}/${action}] Making request to ${peers.length} peers.`);
+        Log.info(`[Request][/v${version}/${action}] Making request to ${this.peers.length} peers.`);
 
         return Promise.all(promises);
     }
@@ -289,6 +318,10 @@ export class PeerNode {
 
     get metrics() {
         return this.libp2p.metrics;
+    }
+
+    get peerId() {
+        return this.libp2p.peerId;
     }
 
     async start(): Promise<void> {
