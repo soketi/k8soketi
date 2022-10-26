@@ -89,7 +89,7 @@ export class PeerNode {
             pubsub: (components) => new GossipSub(components, {
                 allowPublishToZeroPeers: true,
                 emitSelf: false,
-                heartbeatInterval: 5e3, // TODO: Configurable
+                heartbeatInterval: 5e3,
             }),
             peerDiscovery: [
                 mdns({

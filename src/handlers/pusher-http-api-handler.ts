@@ -13,10 +13,20 @@ export interface ChannelResponse {
     occupied: boolean;
 }
 
-// TODO: Make use of
-export interface MessageCheckError {
+export interface MessageCheckErrorInterface {
     message: string;
     code: number;
+}
+
+export class MessageCheckError extends Error implements MessageCheckErrorInterface {
+    message: string;
+    code: number;
+
+    constructor(data: MessageCheckErrorInterface) {
+        super();
+        this.message = data.message;
+        this.code = data.code;
+    }
 }
 
 export class PusherHttpApiHandler extends HttpHandler {
@@ -142,10 +152,12 @@ export class PusherHttpApiHandler extends HttpHandler {
 
             return HttpUtils.sendJson(res, { ok: true });
         } catch (error) {
-            if (error.code === 400) {
-                return HttpUtils.badResponse(res, error.message);
-            } else if (error.code === 413) {
-                return HttpUtils.entityTooLargeResponse(res, error.message);
+            if (error instanceof MessageCheckError) {
+                if (error.code === 400) {
+                    return HttpUtils.badResponse(res, error.message);
+                } else if (error.code === 413) {
+                    return HttpUtils.entityTooLargeResponse(res, error.message);
+                }
             }
         }
     }
@@ -169,10 +181,12 @@ export class PusherHttpApiHandler extends HttpHandler {
 
             return HttpUtils.sendJson(res, { ok: true });
         } catch (error) {
-            if (error.code === 400) {
-                return HttpUtils.badResponse(res, error.message);
-            } else if (error.code === 413) {
-                return HttpUtils.entityTooLargeResponse(res, error.message);
+            if (error instanceof MessageCheckError) {
+                if (error.code === 400) {
+                    return HttpUtils.badResponse(res, error.message);
+                } else if (error.code === 413) {
+                    return HttpUtils.entityTooLargeResponse(res, error.message);
+                }
             }
         };
     }
@@ -189,10 +203,10 @@ export class PusherHttpApiHandler extends HttpHandler {
                 !message.name ||
                 !message.data
             ) {
-                return reject({
+                return reject(new MessageCheckError({
                     message: 'The received data is incorrect',
                     code: 400,
-                });
+                }));
             }
 
             let channels: string[] = message.channels || [message.channel];
@@ -201,28 +215,28 @@ export class PusherHttpApiHandler extends HttpHandler {
 
             // Make sure the channels length is not too big.
             if (channels.length > app.maxEventChannelsAtOnce) {
-                return reject({
+                return reject(new MessageCheckError({
                     message: `Cannot broadcast to more than ${app.maxEventChannelsAtOnce} channels at once`,
                     code: 400,
-                });
+                }));
             }
 
             // Make sure the event name length is not too big.
             if (message.name.length > app.maxEventNameLength) {
-                return reject({
+                return reject(new MessageCheckError({
                     message: `Event name is too long. Maximum allowed size is ${app.maxEventNameLength}.`,
                     code: 400,
-                });
+                }));
             }
 
             let payloadSizeInKb = MetricsUtils.dataToKilobytes(message.data);
 
             // Make sure the total payload of the message body is not too big.
             if (payloadSizeInKb > parseFloat(app.maxEventPayloadInKb as string)) {
-                return reject({
+                return reject(new MessageCheckError({
                     message: `The event data should be less than ${app.maxEventPayloadInKb} KB.`,
                     code: 413,
-                });
+                }));
             }
 
             resolve(message);
