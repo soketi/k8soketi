@@ -1,10 +1,10 @@
 {
-  "name": "ip-soketi",
+  "name": "ipsoketi",
   "version": "0.0.0-dev",
   "description": "Inter-planetary Soketi. Peer-to-peer WebSocket connections for Pusher and Ably.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/soketi/ip-soketi.git"
+    "url": "https://github.com/soketi/ipsoketi.git"
   },
   "main": "dist/cli.js",
   "type": "module",

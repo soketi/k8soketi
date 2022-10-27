@@ -20,7 +20,7 @@ jobs:
         id: docker_meta
         uses: docker/metadata-action@v4.0.1
         with:
-          images: quay.io/soketi/ip-soketi
+          images: quay.io/soketi/ipsoketi
           tags: |
             type=semver,pattern={{version}}-${{ matrix.node }}-distroless
             type=semver,pattern={{major}}.{{minor}}-${{ matrix.node }}-distroless
@@ -64,7 +64,7 @@ jobs:
         id: docker_meta
         uses: docker/metadata-action@v4.0.1
         with:
-          images: quay.io/soketi/ip-soketi
+          images: quay.io/soketi/ipsoketi
           tags: |
             type=semver,pattern={{version}}-${{ matrix.node }}-debian
             type=semver,pattern={{major}}.{{minor}}-${{ matrix.node }}-debian

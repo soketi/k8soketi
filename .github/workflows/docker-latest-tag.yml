@@ -40,7 +40,7 @@ jobs:
         with:
           push: true
           context: .
-          tags: quay.io/soketi/ip-soketi:latest-${{ matrix.node }}-distroless
+          tags: quay.io/soketi/ipsoketi:latest-${{ matrix.node }}-distroless
           file: Dockerfile.distroless
           build-args: |
             VERSION=${{ matrix.node }}
@@ -74,7 +74,7 @@ jobs:
         with:
           push: true
           context: .
-          tags: quay.io/soketi/ip-soketi:latest-${{ matrix.node }}-debian
+          tags: quay.io/soketi/ipsoketi:latest-${{ matrix.node }}-debian
           file: Dockerfile.debian
           build-args: |
             VERSION=${{ matrix.node }}

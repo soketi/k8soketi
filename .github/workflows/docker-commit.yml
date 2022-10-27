@@ -39,7 +39,7 @@ jobs:
         with:
           push: true
           context: .
-          tags: quay.io/soketi/ip-soketi:${{ github.sha }}-${{ matrix.node }}-distroless
+          tags: quay.io/soketi/ipsoketi:${{ github.sha }}-${{ matrix.node }}-distroless
           file: Dockerfile.distroless
           build-args: |
             VERSION=${{ matrix.node }}
@@ -71,7 +71,7 @@ jobs:
         with:
           push: true
           context: .
-          tags: quay.io/soketi/ip-soketi:${{ github.sha }}-${{ matrix.node }}-debian
+          tags: quay.io/soketi/ipsoketi:${{ github.sha }}-${{ matrix.node }}-debian
           file: Dockerfile.debian
           build-args: |
             VERSION=${{ matrix.node }}
