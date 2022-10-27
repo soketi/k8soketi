@@ -62,7 +62,7 @@
     "@aws-sdk/util-dynamodb": "^3.188.0",
     "@chainsafe/libp2p-gossipsub": "^5.0.0",
     "@chainsafe/libp2p-noise": "^10.0.0",
-    "@libp2p/mdns": "^5.0.0",
+    "@libp2p/mdns": "^5.1.0",
     "@libp2p/mplex": "^7.0.0",
     "@libp2p/tcp": "^5.0.1",
     "@libp2p/webrtc-direct": "^4.0.1",

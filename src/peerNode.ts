@@ -95,6 +95,7 @@ export class PeerNode {
                 mdns({
                     interval: 5e3, // TODO: Configurable
                     port: this.options.peer.dns.server.port,
+                    ip: this.options.peer.dns.server.host,
                     broadcast: true,
                     serviceTag: this.options.peer.dns.server.tag,
                 }),
