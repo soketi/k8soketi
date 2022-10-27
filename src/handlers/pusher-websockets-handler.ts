@@ -117,7 +117,7 @@ export class PusherWebsocketsHandler {
                         message: 'Connection not authorized within timeout.',
                     },
                 }, 4009);
-            }, 30e3); // TODO: Custom timeout
+            }, 30e3);
         }
 
         Prometheus.newConnection(ws);
@@ -560,7 +560,7 @@ export class PusherWebsocketsHandler {
                 } catch (e) {
                     Log.warning(`[Pusher][WebSockets] ${e}`);
                 }
-            }, 120e3); // TODO: Custom timeout
+            }, 120e3);
         }
 
         ws.sendJson = async (data) => {
