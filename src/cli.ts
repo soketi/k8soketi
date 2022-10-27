@@ -30,7 +30,8 @@ const registerStartCommand = async () => {
         // WS Configuration
         .addOption(new Option('--ws-grace-period <wsGracePeriod>', 'The amount of time to wait (in seconds) for the connections to be evicted, before closing the WebSockets server.').env('WS_GRACE_PERIOD').default(1).argParser(v => parseInt(v)))
         .addOption(new Option('--ws-max-backpressure-in-mb <wsMaxBackpressureInMb>', 'The max. backpressure (in MB). Read more: https://github.com/uNetworking/uWebSockets.js/blob/master/examples/Backpressure.js').env('WS_MAX_BACKPRESSURE_IN_MB').default(1).argParser(v => parseInt(v)))
-        .addOption(new Option('--ws-max-payload-in-mb <wsMaxPayloadInMb>', 'If a connection sends a payload greater than this amount (in MB), it will forcefully close the connection.').env('WS_MAX_PAYLOAD_IN_MB').default(100).argParser(v => parseInt(v)));
+        .addOption(new Option('--ws-max-payload-in-mb <wsMaxPayloadInMb>', 'If a connection sends a payload greater than this amount (in MB), it will forcefully close the connection.').env('WS_MAX_PAYLOAD_IN_MB').default(100).argParser(v => parseInt(v)))
+        .addOption(new Option('--mode <mode>', 'The mode to run as. Workers cannot serve HTTP/WS requests. Servers cannot process queued jobs.').env('WS_MAX_PAYLOAD_IN_MB').default('full').choices(['full', 'worker', 'server']));
 
     // Cache Managers
     cmdx.addOption(new Option('--cache-manager <cacheManager>', 'The cache driver to use.').default('memory').choices(['memory']));
@@ -91,6 +92,7 @@ const registerStartCommand = async () => {
             'websockets.server.gracePeriod': options.wsGracePeriod,
             'websockets.server.maxBackpressureInMb': options.wsMaxBackpressureInMb,
             'websockets.server.maxPayloadLengthInMb': options.wsMaxPayloadInMb,
+            'websockets.mode': options.mode,
             // Peer
             'peer.dns.discovery.host': options.dnsDiscoveryHost,
             'peer.dns.server.host': options.dnsServerHost,

@@ -77,6 +77,7 @@ export interface Options {
                 maxMemberSizeInKb: number;
             };
         };
+        mode: 'full'|'server'|'worker',
         queueManagers: {
             driver: 'sync'|'sqs';
             sqs: {

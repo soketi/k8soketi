@@ -191,23 +191,25 @@ export class WebsocketsNode {
     }
 
     protected async registerPusherRoutes(): Promise<void> {
-        this.app.ws('/app/:key', {
-            idleTimeout: 120,
-            maxBackpressure: this.options.websockets.server.maxBackpressureInMb * 1024 * 1024,
-            maxPayloadLength: this.options.websockets.server.maxPayloadLengthInMb * 1024 * 1024,
-            open: async (ws: WebSocket) => {
-                return await PusherWebsocketsHandler.onOpen(ws);
-            },
-            message: async (ws: WebSocket, message: uWebSocketMessage, isBinary: boolean) => {
-                return await PusherWebsocketsHandler.onMessage(ws, message, isBinary);
-            },
-            close: async (ws: WebSocket, code: number, message: uWebSocketMessage) => {
-                return await PusherWebsocketsHandler.onClose(ws, code, message);
-            },
-            upgrade: async (res: HttpResponse, req: HttpRequest, context) => {
-                return await PusherWebsocketsHandler.onUpgrade(res, req, context);
-            },
-        });
+        if (this.canProcessRequests) {
+            this.app.ws('/app/:key', {
+                idleTimeout: 120,
+                maxBackpressure: this.options.websockets.server.maxBackpressureInMb * 1024 * 1024,
+                maxPayloadLength: this.options.websockets.server.maxPayloadLengthInMb * 1024 * 1024,
+                open: async (ws: WebSocket) => {
+                    return await PusherWebsocketsHandler.onOpen(ws);
+                },
+                message: async (ws: WebSocket, message: uWebSocketMessage, isBinary: boolean) => {
+                    return await PusherWebsocketsHandler.onMessage(ws, message, isBinary);
+                },
+                close: async (ws: WebSocket, code: number, message: uWebSocketMessage) => {
+                    return await PusherWebsocketsHandler.onClose(ws, code, message);
+                },
+                upgrade: async (res: HttpResponse, req: HttpRequest, context) => {
+                    return await PusherWebsocketsHandler.onUpgrade(res, req, context);
+                },
+            });
+        }
 
         this.app.get('/', async (res, req) => {
             return await PusherHttpApiHandler.serve('healthCheck', res, req);
@@ -217,58 +219,60 @@ export class WebsocketsNode {
             return await PusherHttpApiHandler.serve('ready', res, req);
         });
 
-        this.app.get('/accept-traffic', async (res, req) => {
-            return await PusherHttpApiHandler.serve('acceptTraffic', res, req);
-        });
+        if (this.canProcessRequests) {
+            this.app.get('/accept-traffic', async (res, req) => {
+                return await PusherHttpApiHandler.serve('acceptTraffic', res, req);
+            });
 
-        this.app.get('/apps/:appId/channels', async (res, req) => {
-            return await PusherHttpApiHandler.serve('channels', res, req, [
-                new AppRetrievalMiddleware(this),
-                new AppAuthenticationMiddleware(this),
-                new AppApiReadRateLimiter(this),
-            ], ['appId']);
-        });
+            this.app.get('/apps/:appId/channels', async (res, req) => {
+                return await PusherHttpApiHandler.serve('channels', res, req, [
+                    new AppRetrievalMiddleware(this),
+                    new AppAuthenticationMiddleware(this),
+                    new AppApiReadRateLimiter(this),
+                ], ['appId']);
+            });
 
-        this.app.get('/apps/:appId/channels/:channelName', async (res, req) => {
-            return await PusherHttpApiHandler.serve('channel', res, req, [
-                new AppRetrievalMiddleware(this),
-                new AppAuthenticationMiddleware(this),
-                new AppApiReadRateLimiter(this),
-            ], ['appId', 'channelName']);
-        });
+            this.app.get('/apps/:appId/channels/:channelName', async (res, req) => {
+                return await PusherHttpApiHandler.serve('channel', res, req, [
+                    new AppRetrievalMiddleware(this),
+                    new AppAuthenticationMiddleware(this),
+                    new AppApiReadRateLimiter(this),
+                ], ['appId', 'channelName']);
+            });
 
-        this.app.get('/apps/:appId/channels/:channelName/users', async (res, req) => {
-            return await PusherHttpApiHandler.serve('channelUsers', res, req, [
-                new AppRetrievalMiddleware(this),
-                new AppAuthenticationMiddleware(this),
-                new AppApiReadRateLimiter(this),
-            ], ['appId', 'channelName']);
-        });
+            this.app.get('/apps/:appId/channels/:channelName/users', async (res, req) => {
+                return await PusherHttpApiHandler.serve('channelUsers', res, req, [
+                    new AppRetrievalMiddleware(this),
+                    new AppAuthenticationMiddleware(this),
+                    new AppApiReadRateLimiter(this),
+                ], ['appId', 'channelName']);
+            });
 
-        this.app.post('/apps/:appId/events', async (res, req) => {
-            return await PusherHttpApiHandler.serve('events', res, req, [
-                new ExtractJsonBodyMiddleware(this),
-                new AppRetrievalMiddleware(this),
-                new AppAuthenticationMiddleware(this),
-                new AppApiBroadcastRateLimiter(this),
-            ], ['appId']);
-        });
+            this.app.post('/apps/:appId/events', async (res, req) => {
+                return await PusherHttpApiHandler.serve('events', res, req, [
+                    new ExtractJsonBodyMiddleware(this),
+                    new AppRetrievalMiddleware(this),
+                    new AppAuthenticationMiddleware(this),
+                    new AppApiBroadcastRateLimiter(this),
+                ], ['appId']);
+            });
 
-        this.app.post('/apps/:appId/batch_events', async (res, req) => {
-            return await PusherHttpApiHandler.serve('batchEvents', res, req, [
-                new ExtractJsonBodyMiddleware(this),
-                new AppRetrievalMiddleware(this),
-                new AppAuthenticationMiddleware(this),
-                new AppApiBatchBroadcastRateLimiter(this),
-            ], ['appId']);
-        });
+            this.app.post('/apps/:appId/batch_events', async (res, req) => {
+                return await PusherHttpApiHandler.serve('batchEvents', res, req, [
+                    new ExtractJsonBodyMiddleware(this),
+                    new AppRetrievalMiddleware(this),
+                    new AppAuthenticationMiddleware(this),
+                    new AppApiBatchBroadcastRateLimiter(this),
+                ], ['appId']);
+            });
 
-        this.app.post('/apps/:appId/users/:userId/terminate_connections', async (res, req) => {
-            return await PusherHttpApiHandler.serve('terminateUserConnections', res, req, [
-                new AppRetrievalMiddleware(this),
-                new AppAuthenticationMiddleware(this),
-            ], ['appId', 'userId']);
-        });
+            this.app.post('/apps/:appId/users/:userId/terminate_connections', async (res, req) => {
+                return await PusherHttpApiHandler.serve('terminateUserConnections', res, req, [
+                    new AppRetrievalMiddleware(this),
+                    new AppAuthenticationMiddleware(this),
+                ], ['appId', 'userId']);
+            });
+        }
 
         this.app.any('/*', async (res, req) => {
             return await PusherHttpApiHandler.serve('notFound', res, req);
@@ -319,5 +323,9 @@ export class WebsocketsNode {
         }
 
         return this.publicChannelManager;
+    }
+
+    get canProcessRequests(): boolean {
+        return ['server', 'full'].includes(this.options.websockets.mode);
     }
 }

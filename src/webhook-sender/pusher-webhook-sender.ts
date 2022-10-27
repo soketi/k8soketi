@@ -14,12 +14,14 @@ export class PusherWebhookSender {
 
         let processJob = async (job: SendPusherWebhook) => await job.handle();
 
-        QueueManager.processJobsFromQueue('client_event_webhooks', processJob.bind(this));
-        QueueManager.processJobsFromQueue('member_added_webhooks', processJob.bind(this));
-        QueueManager.processJobsFromQueue('member_removed_webhooks', processJob.bind(this));
-        QueueManager.processJobsFromQueue('channel_vacated_webhooks', processJob.bind(this));
-        QueueManager.processJobsFromQueue('channel_occupied_webhooks', processJob.bind(this));
-        QueueManager.processJobsFromQueue('cache_miss_webhooks', processJob.bind(this));
+        if (this.canProcessQueues) {
+            QueueManager.processJobsFromQueue('client_event_webhooks', processJob.bind(this));
+            QueueManager.processJobsFromQueue('member_added_webhooks', processJob.bind(this));
+            QueueManager.processJobsFromQueue('member_removed_webhooks', processJob.bind(this));
+            QueueManager.processJobsFromQueue('channel_vacated_webhooks', processJob.bind(this));
+            QueueManager.processJobsFromQueue('channel_occupied_webhooks', processJob.bind(this));
+            QueueManager.processJobsFromQueue('cache_miss_webhooks', processJob.bind(this));
+        }
     }
 
     static async sendClientEvent(app: App, channel: string, event: string, data: any, socketId?: string, userId?: string): Promise<void> {
@@ -160,5 +162,9 @@ export class PusherWebhookSender {
                 this.batchHasLeader = false;
             }, this.options.websockets.webhooks.batching.duration);
         }
+    }
+
+    static get canProcessQueues(): boolean {
+        return ['worker', 'full'].includes(this.options.websockets.mode);
     }
 }

@@ -108,6 +108,7 @@ export default class Server {
                     maxMemberSizeInKb: 2,
                 },
             },
+            mode: 'full',
             queueManagers: {
                 driver: 'sync',
                 sqs: {
@@ -159,6 +160,8 @@ export default class Server {
     }
 
     async start(): Promise<void> {
+        Log.info(`🌸 Starting the server in ${this.options.websockets.mode.toUpperCase()} mode...`);
+
         Log.info('🤖 Initializing the peer node...', true);
         await this.peerNode.initialize();
 
