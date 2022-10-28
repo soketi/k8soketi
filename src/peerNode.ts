@@ -62,11 +62,11 @@ export class PeerNode {
                     maxListeners: 10,
                 },
                 hop: {
-                  enabled: true
+                    enabled: true,
                 },
                 advertise: {
-                  enabled: true,
-                }
+                    enabled: true,
+                },
             },
             transports: [
                 tcp({
