@@ -42,7 +42,7 @@
     "@types/uuid": "^8.3.4",
     "@typescript-eslint/eslint-plugin": "^5.40.0",
     "@typescript-eslint/parser": "^5.40.0",
-    "aws-sdk": "^2.1233.0",
+    "aws-sdk": "^2.1243.0",
     "body-parser": "^1.20.1",
     "eslint": "^8.25.0",
     "express": "^4.18.2",
