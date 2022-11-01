@@ -25,6 +25,10 @@ export interface Options {
         dns: {
             discovery: {
                 host: string;
+                ws: {
+                    enabled: boolean;
+                    port: number;
+                };
             };
             server: {
                 host: string;

@@ -14,6 +14,7 @@ import { Prometheus } from './prometheus';
 import { PubsubMessage } from './message';
 import { tcp } from '@libp2p/tcp';
 import { toString } from 'uint8arrays/to-string';
+import { webSockets } from '@libp2p/websockets';
 
 export interface RequestData {
     peerId: PeerId;
@@ -49,11 +50,13 @@ export class PeerNode {
     }
 
     async initialize(): Promise<void> {
-        let { host } = this.options.peer.dns.discovery;
-
         this.libp2p = await createLibp2p({
             addresses: {
-                listen: [`/ip4/${host}/tcp/0`],
+                listen: [
+                    this.options.peer.dns.discovery.ws.enabled
+                        ? `/ip4/${this.options.peer.dns.discovery.host}/tcp/${this.options.peer.dns.discovery.ws.port}/ws`
+                        : `/ip4/${this.options.peer.dns.discovery.host}/tcp/0`,
+                ],
             },
             relay: {
                 enabled: true,
@@ -69,11 +72,13 @@ export class PeerNode {
                 },
             },
             transports: [
-                tcp({
-                    inboundSocketInactivityTimeout: this.options.peer.inactivityTimeout * 1000,
-                    outboundSocketInactivityTimeout: this.options.peer.inactivityTimeout * 1000,
-                    socketCloseTimeout: this.options.websockets.server.gracePeriod * 1000,
-                }),
+                this.options.peer.dns.discovery.ws.enabled
+                    ? webSockets()
+                    : tcp({
+                        inboundSocketInactivityTimeout: this.options.peer.inactivityTimeout * 1000,
+                        outboundSocketInactivityTimeout: this.options.peer.inactivityTimeout * 1000,
+                        socketCloseTimeout: this.options.websockets.server.gracePeriod * 1000,
+                    }),
             ],
             streamMuxers: [
                 mplex({

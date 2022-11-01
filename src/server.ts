@@ -43,6 +43,10 @@ export default class Server {
             dns: {
                 discovery: {
                     host: '127.0.0.1',
+                    ws: {
+                        enabled: false,
+                        port: 11002,
+                    },
                 },
                 server: {
                     host: '127.0.0.1',
