@@ -40,19 +40,19 @@ export default class Server {
             },
         },
         peer: {
-            dns: {
-                discovery: {
-                    host: '127.0.0.1',
-                    ws: {
-                        enabled: false,
-                        port: 11002,
-                    },
-                },
+            discovery: {
+                host: '127.0.0.1',
+            },
+            mdns: {
                 server: {
                     host: '127.0.0.1',
-                    port: 53,
+                    port: 11003,
                     tag: 'ipfs.local',
                 },
+            },
+            ws: {
+                enabled: false,
+                port: 11002,
             },
             inactivityTimeout: 10,
         },

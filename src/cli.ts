@@ -22,12 +22,12 @@ const registerStartCommand = async () => {
     cmdx.addOption(new Option('--host <host>', 'The host to run the WebSockets/HTTP server on.').env('HOST').default('0.0.0.0'))
         .addOption(new Option('--port <port>', 'The port to run the WebSockets/HTTP server on.').env('PORT').default(6001).argParser(v => parseInt(v)))
         // Peer Configuration
-        .addOption(new Option('--dns-discovery-host <dnsDiscoveryHost>', 'The host on which the peers will discovery through using the TCP.').env('DNS_DISCOVERY_HOST').default('127.0.0.1'))
-        .addOption(new Option('--dns-discovery-through-ws', 'Enable if you wish to connect to other peers via WebSockets instead of TCP.').env('DNS_DISCOVERY_THROUGH_WS').default(false))
-        .addOption(new Option('--dns-discovery-ws-port <dnsDiscoveryWsPort>', 'The port on which the peers will discovery through using the WS protocol.').env('DNS_DISCOVERY_WS_PORT').default(11002).argParser(v => parseInt(v)))
-        .addOption(new Option('--dns-server-host <dnsServerHost>', 'The host of the DNS server to query to.').env('DNS_SERVER_HOST').default('127.0.0.1'))
-        .addOption(new Option('--dns-server-port <dnsServerPort>', 'The port of the DNS server to query to.').env('DNS_SERVER_PORT').default(53).argParser(v => parseInt(v)))
-        .addOption(new Option('--dns-server-tag <dnsServerTag>', 'The tag name for the DNS query to get the other peers.').env('DNS_SERVER_TAG').default('ipfs.local'))
+        .addOption(new Option('--peer-host <peerHost>', 'The host on which the peers will be exposed to TCP or WS. It has to be a private/public IP for distributed systems.').env('PEER_HOST').default('127.0.0.1'))
+        .addOption(new Option('--mdns-server-host <mdnsServerHost>', 'The host of the MDNS server to serve and query to.').env('MDNS_SERVER_HOST').default('127.0.0.1'))
+        .addOption(new Option('--mdns-server-port <mdnsServerPort>', 'The port of the MDNS server to serve and query to.').env('MDNS_SERVER_PORT').default(11003).argParser(v => parseInt(v)))
+        .addOption(new Option('--mdns-server-tag <mdnsServerTag>', 'The tag name for the MDNS query to get the other peers.').env('MDNS_SERVER_TAG').default('ipfs.local'))
+        .addOption(new Option('--peer-ws', 'Enable if you wish to connect to other peers via WebSockets instead of TCP. Works better in distributed environments that are secure by default.').env('PEER_WS').default(false))
+        .addOption(new Option('--peer-ws-port <peerWsPort>', 'The port on which the peer will be accessible via the WS protocol.').env('PEER_WS_PORT').default(11002).argParser(v => parseInt(v)))
         .addOption(new Option('--peer-inactivity-timeout <peerInactivityTimeout>', 'The amount of time (in seconds) that should pass in order to disconnect a node from the P2P network.').env('PEER_INACTIVITY_TIMEOUT').default(10))
         // WS Configuration
         .addOption(new Option('--ws-grace-period <wsGracePeriod>', 'The amount of time to wait (in seconds) for the connections to be evicted, before closing the WebSockets server.').env('WS_GRACE_PERIOD').default(1).argParser(v => parseInt(v)))
@@ -96,12 +96,12 @@ const registerStartCommand = async () => {
             'websockets.server.maxPayloadLengthInMb': options.wsMaxPayloadInMb,
             'websockets.mode': options.mode,
             // Peer
-            'peer.dns.discovery.host': options.dnsDiscoveryHost,
-            'peer.dns.discovery.ws.port': options.dnsDiscoveryWsPort,
-            'peer.dns.discovery.ws.enabled': options.dnsDiscoveryThroughWs,
-            'peer.dns.server.host': options.dnsServerHost,
-            'peer.dns.server.port': options.dnsServerPort,
-            'peer.dns.server.tag': options.dnsServerTag,
+            'peer.mdns.server.host': options.mdnsServerHost,
+            'peer.mdns.server.port': options.mdnsServerPort,
+            'peer.mdns.server.tag': options.mdnsServerTag,
+            'peer.discovery.host': options.peerHost,
+            'peer.ws.port': options.peerWsPort,
+            'peer.ws.enabled': options.peerWs,
             'peer.inactivityTimeout': options.peerInactivityTimeout,
 
             // Cache Managers

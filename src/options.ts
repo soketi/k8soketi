@@ -22,19 +22,19 @@ export interface Options {
         };
     };
     peer: {
-        dns: {
-            discovery: {
-                host: string;
-                ws: {
-                    enabled: boolean;
-                    port: number;
-                };
-            };
+        discovery: {
+            host: string;
+        };
+        mdns: {
             server: {
                 host: string;
                 port: number;
                 tag: string;
             };
+        };
+        ws: {
+            enabled: boolean;
+            port: number;
         };
         inactivityTimeout: number;
     },

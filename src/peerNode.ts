@@ -53,9 +53,9 @@ export class PeerNode {
         this.libp2p = await createLibp2p({
             addresses: {
                 listen: [
-                    this.options.peer.dns.discovery.ws.enabled
-                        ? `/ip4/${this.options.peer.dns.discovery.host}/tcp/${this.options.peer.dns.discovery.ws.port}/ws`
-                        : `/ip4/${this.options.peer.dns.discovery.host}/tcp/0`,
+                    this.options.peer.ws.enabled
+                        ? `/ip4/${this.options.peer.discovery.host}/tcp/${this.options.peer.ws.port}/ws`
+                        : `/ip4/${this.options.peer.discovery.host}/tcp/0`,
                 ],
             },
             relay: {
@@ -72,7 +72,7 @@ export class PeerNode {
                 },
             },
             transports: [
-                this.options.peer.dns.discovery.ws.enabled
+                this.options.peer.ws.enabled
                     ? webSockets()
                     : tcp({
                         inboundSocketInactivityTimeout: this.options.peer.inactivityTimeout * 1000,
@@ -99,10 +99,10 @@ export class PeerNode {
             peerDiscovery: [
                 mdns({
                     interval: 5e3, // TODO: Configurable
-                    port: this.options.peer.dns.server.port,
-                    ip: this.options.peer.dns.server.host,
+                    port: this.options.peer.mdns.server.port,
+                    ip: this.options.peer.mdns.server.host,
                     broadcast: true,
-                    serviceTag: this.options.peer.dns.server.tag,
+                    serviceTag: this.options.peer.mdns.server.tag,
                 }),
             ],
             metrics: {
