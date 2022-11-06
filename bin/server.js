@@ -2,4 +2,4 @@
 
 import './../dist/cli';
 
-process.title = 'dsoketi';
+process.title = 'k8soketi';

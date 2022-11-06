@@ -1,10 +1,10 @@
 {
-  "name": "ipsoketi",
+  "name": "k8soketi",
   "version": "0.0.0-dev",
   "description": "Inter-planetary Soketi. Peer-to-peer WebSocket connections for Pusher and Ably.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/soketi/ipsoketi.git"
+    "url": "https://github.com/soketi/k8soketi.git"
   },
   "main": "dist/cli.js",
   "type": "module",
@@ -83,6 +83,6 @@
     "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js.git#v20.10.0"
   },
   "bin": {
-    "dsoketi": "bin/server.js"
+    "k8soketi": "bin/server.js"
   }
 }
