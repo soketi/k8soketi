@@ -18,15 +18,17 @@ const registerStartCommand = async () => {
 
     let cmdx = program.command('start');
 
+    // Kubernetes
+    cmdx.addOption(new Option('--kube-auth <kubeAuth>', 'The authentication method to the cluster.').env('KUBE_AUTH').default('in-cluster').choices(['in-cluster', 'kubeconfig']))
+        .addOption(new Option('--kube-pod-name <kubePodName>', 'The name of the current pod.').default('k8soketi').env('KUBE_POD_NAME'))
+        .addOption(new Option('--kube-pod-namespace <kubePodNamespace>', 'The namespace of the current pod.').default('default').env('KUBE_POD_NAMESPACE'));
+
     // Connection
     cmdx.addOption(new Option('--host <host>', 'The host to run the WebSockets/HTTP server on.').env('HOST').default('0.0.0.0'))
         .addOption(new Option('--port <port>', 'The port to run the WebSockets/HTTP server on.').env('PORT').default(6001).argParser(v => parseInt(v)))
         // Peer Configuration
         .addOption(new Option('--peer-host <peerHost>', 'The host on which the peers will be exposed to TCP or WS. It has to be a private/public IP for distributed systems.').env('PEER_HOST').default('127.0.0.1'))
-        .addOption(new Option('--mdns-server-host <mdnsServerHost>', 'The host of the MDNS server to serve and query to.').env('MDNS_SERVER_HOST').default('127.0.0.1'))
-        .addOption(new Option('--mdns-server-port <mdnsServerPort>', 'The port of the MDNS server to serve and query to.').env('MDNS_SERVER_PORT').default(11003).argParser(v => parseInt(v)))
-        .addOption(new Option('--mdns-server-tag <mdnsServerTag>', 'The tag name for the MDNS query to get the other peers.').env('MDNS_SERVER_TAG').default('ipfs.local'))
-        .addOption(new Option('--peer-ws', 'Enable if you wish to connect to other peers via WebSockets instead of TCP. Works better in distributed environments that are secure by default.').env('PEER_WS').default(false))
+        .addOption(new Option('--peer-inactivity-timeout <peerInactivityTimeout>', 'The amount of time (in seconds) that should pass in order to disconnect a node from the P2P network.').env('PEER_INACTIVITY_TIMEOUT').default(10))
         .addOption(new Option('--peer-ws-port <peerWsPort>', 'The port on which the peer will be accessible via the WS protocol.').env('PEER_WS_PORT').default(11002).argParser(v => parseInt(v)))
         .addOption(new Option('--peer-inactivity-timeout <peerInactivityTimeout>', 'The amount of time (in seconds) that should pass in order to disconnect a node from the P2P network.').env('PEER_INACTIVITY_TIMEOUT').default(10))
         // WS Configuration
@@ -88,6 +90,11 @@ const registerStartCommand = async () => {
 
     cmdx.action(async (options, command) => {
         let server = new Server({
+            // Kube
+            'kube.authentication': options.kubeAuth,
+            'kube.pod.name': options.kubePodName,
+            'kube.pod.namespace': options.kubePodNamespace,
+
             // Connection
             'websockets.server.host': options.host,
             'websockets.server.port': options.port,
@@ -96,12 +103,8 @@ const registerStartCommand = async () => {
             'websockets.server.maxPayloadLengthInMb': options.wsMaxPayloadInMb,
             'websockets.mode': options.mode,
             // Peer
-            'peer.mdns.server.host': options.mdnsServerHost,
-            'peer.mdns.server.port': options.mdnsServerPort,
-            'peer.mdns.server.tag': options.mdnsServerTag,
-            'peer.discovery.host': options.peerHost,
+            'peer.ws.host': options.peerHost,
             'peer.ws.port': options.peerWsPort,
-            'peer.ws.enabled': options.peerWs,
             'peer.inactivityTimeout': options.peerInactivityTimeout,
 
             // Cache Managers

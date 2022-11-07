@@ -9,6 +9,14 @@ export interface Options {
         methods: string[];
         allowedHeaders: string[];
     };
+    kube: {
+        pod: {
+            ip: string;
+            namespace: string;
+            name: string;
+        };
+        authentication: 'in-cluster'|'kubeconfig';
+    };
     logs: {
         verbose: boolean;
         showWarnings: boolean;
@@ -22,18 +30,8 @@ export interface Options {
         };
     };
     peer: {
-        discovery: {
-            host: string;
-        };
-        mdns: {
-            server: {
-                host: string;
-                port: number;
-                tag: string;
-            };
-        };
         ws: {
-            enabled: boolean;
+            host: string;
             port: number;
         };
         inactivityTimeout: number;

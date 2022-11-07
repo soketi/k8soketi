@@ -1,10 +1,10 @@
 import { Connection } from '@libp2p/interface-connection';
+import { CoreV1Api, KubeConfig, KubernetesObjectApi } from '@kubernetes/client-node';
 import { createLibp2p, Libp2p } from 'libp2p';
 import { fromString } from 'uint8arrays/from-string';
 import { GossipSub } from '@chainsafe/libp2p-gossipsub';
 import { Log } from './log';
 import { mplex } from '@libp2p/mplex';
-import { mdns } from '@libp2p/mdns';
 import { noise } from '@chainsafe/libp2p-noise';
 import { Options } from './options';
 import { PeerId } from '@libp2p/interface-peer-id';
@@ -12,7 +12,6 @@ import { PeerInfo } from '@libp2p/interface-peer-info';
 import { pipe } from 'it-pipe';
 import { Prometheus } from './prometheus';
 import { PubsubMessage } from './message';
-import { tcp } from '@libp2p/tcp';
 import { toString } from 'uint8arrays/to-string';
 import { webSockets } from '@libp2p/websockets';
 
@@ -53,9 +52,7 @@ export class PeerNode {
         this.libp2p = await createLibp2p({
             addresses: {
                 listen: [
-                    this.options.peer.ws.enabled
-                        ? `/ip4/${this.options.peer.discovery.host}/tcp/${this.options.peer.ws.port}/ws`
-                        : `/ip4/${this.options.peer.discovery.host}/tcp/0`,
+                    `/ip4/${this.options.peer.ws.host}/tcp/${this.options.peer.ws.port}/ws`,
                 ],
             },
             relay: {
@@ -72,13 +69,7 @@ export class PeerNode {
                 },
             },
             transports: [
-                this.options.peer.ws.enabled
-                    ? webSockets()
-                    : tcp({
-                        inboundSocketInactivityTimeout: this.options.peer.inactivityTimeout * 1000,
-                        outboundSocketInactivityTimeout: this.options.peer.inactivityTimeout * 1000,
-                        socketCloseTimeout: this.options.websockets.server.gracePeriod * 1000,
-                    }),
+                webSockets(),
             ],
             streamMuxers: [
                 mplex({
@@ -87,9 +78,7 @@ export class PeerNode {
                 }),
             ],
             connectionEncryption: [
-                noise({
-                    //
-                }),
+                noise(),
             ],
             pubsub: (components) => new GossipSub(components, {
                 allowPublishToZeroPeers: true,
@@ -97,13 +86,7 @@ export class PeerNode {
                 heartbeatInterval: 5e3,
             }),
             peerDiscovery: [
-                mdns({
-                    interval: 5e3, // TODO: Configurable
-                    port: this.options.peer.mdns.server.port,
-                    ip: this.options.peer.mdns.server.host,
-                    broadcast: true,
-                    serviceTag: this.options.peer.mdns.server.tag,
-                }),
+                // TODO: Implement bootstrap by kube
             ],
             metrics: {
                 enabled: this.options.metrics.enabled,
@@ -305,6 +288,54 @@ export class PeerNode {
         });
     }
 
+    protected async updatePodMetadata(): Promise<void> {
+        let kc = new KubeConfig();
+
+        switch (this.options.kube.authentication) {
+            case 'in-cluster':
+                kc.loadFromCluster();
+            case 'kubeconfig':
+                kc.loadFromDefault();
+                break;
+            default:
+                Log.error(`The Kubernetes authentication method cannot be handled. Got: ${this.options.kube.authentication}`);
+                throw new Error('Could not start server.');
+        }
+
+        try {
+            let currentPod = await kc.makeApiClient(CoreV1Api).readNamespacedPod(
+                this.options.kube.pod.name,
+                this.options.kube.pod.namespace,
+            );
+
+            this.options.kube.pod.ip = currentPod.body.status.podIP;
+
+            await KubernetesObjectApi.makeApiClient(kc).patch({
+                kind: currentPod.body.kind,
+                apiVersion: currentPod.body.apiVersion,
+                metadata: {
+                    ...currentPod.body.metadata,
+                    annotations: {
+                        ...currentPod.body.metadata.annotations || {},
+                        'ip.soketi.app/peer-id': this.peerId.toString(),
+                        'ip.soketi.app/ready': 'yes',
+                    },
+                },
+            });
+
+            Log.info(`🤖 Marked the current pod with the peer id: ${this.peerId.toString()}`);
+            Log.info(`🤖 Current pod IP: ${this.options.kube.pod.ip}`);
+            Log.info('🤖 Add the following annotation to your services selectors: ip.soketi.app/ready=yes');
+        } catch (e) {
+            if (e?.response?.body?.code !== 200) {
+                Log.error(`Updating the pod metadata did not work: ${e.response.body.message}`);
+                throw new Error('Could not start server.');
+            }
+
+            throw e;
+        }
+    }
+
     get peers() {
         return this.libp2p.getPeers();
     }
@@ -335,6 +366,8 @@ export class PeerNode {
         for await (let handler of this.ensurePeerIsRunningHandlers) {
             handler();
         }
+
+        await this.updatePodMetadata();
     }
 
     async stop(): Promise<void> {

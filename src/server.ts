@@ -27,6 +27,14 @@ export default class Server {
                 'X-Socket-Id',
             ],
         },
+        kube: {
+            pod: {
+                ip: '127.0.0.1',
+                namespace: 'default',
+                name: 'k8soketi',
+            },
+            authentication: 'in-cluster',
+        },
         logs: {
             verbose: false,
             timestamps: false,
@@ -40,19 +48,9 @@ export default class Server {
             },
         },
         peer: {
-            discovery: {
-                host: '127.0.0.1',
-            },
-            mdns: {
-                server: {
-                    host: '127.0.0.1',
-                    port: 11003,
-                    tag: 'ipfs.local',
-                },
-            },
             ws: {
-                enabled: false,
-                port: 11002,
+                host: '127.0.0.1',
+                port: 6002,
             },
             inactivityTimeout: 10,
         },
