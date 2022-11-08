@@ -10,6 +10,9 @@ export interface Options {
         allowedHeaders: string[];
     };
     kube: {
+        discovery: {
+            services: string[];
+        };
         pod: {
             ip: string;
             namespace: string;

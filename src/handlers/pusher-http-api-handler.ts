@@ -5,7 +5,6 @@ import { HttpResponse, HttpUtils } from '../utils/http-utils';
 import { MetricsUtils } from '../utils/metrics-utils';
 import { PusherApiMessage, SentPusherMessage } from '../message';
 import { WsUtils } from '../utils/ws-utils';
-import v8 from 'v8';
 
 export interface ChannelResponse {
     subscription_count: number;
@@ -31,41 +30,13 @@ export class MessageCheckError extends Error implements MessageCheckErrorInterfa
 
 export class PusherHttpApiHandler extends HttpHandler {
     static async healthCheck(res: HttpResponse): Promise<HttpResponse> {
-        return HttpUtils.sendJson(res, {
-            status: 'OK',
-            peer: this.wsNode.peerNode.peerId.toString(),
-        });
+        return HttpUtils.send(res, 'OK');
     }
 
     static async ready(res: HttpResponse): Promise<HttpResponse> {
         return this.wsNode.closing
             ? HttpUtils.serverErrorResponse(res, 'The server is closing. Choose another server. :)')
             : HttpUtils.send(res, 'OK');
-    }
-
-    static async acceptTraffic(res: HttpResponse): Promise<HttpResponse> {
-        if (this.wsNode.closing) {
-            return HttpUtils.serverErrorResponse(res, 'The server is closing. Choose another server. :)');
-        }
-
-        let threshold = this.wsNode.options.websockets.http.acceptTraffic.memoryThreshold;
-
-        let {
-            rss,
-            heapTotal,
-            external,
-            arrayBuffers,
-        } = process.memoryUsage();
-
-        let totalSize = v8.getHeapStatistics().total_available_size;
-        let usedSize = rss + heapTotal + external + arrayBuffers;
-        let percentUsage = (usedSize / totalSize) * 100;
-
-        if (threshold < percentUsage) {
-            return HttpUtils.serverErrorResponse(res, 'Low on memory here. Choose another server. :)');
-        }
-
-        return HttpUtils.send(res, 'OK');
     }
 
     static async channels(res: HttpResponse): Promise<HttpResponse> {

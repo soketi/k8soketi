@@ -28,6 +28,9 @@ export default class Server {
             ],
         },
         kube: {
+            discovery: {
+                services: [],
+            },
             pod: {
                 ip: '127.0.0.1',
                 namespace: 'default',

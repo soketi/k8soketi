@@ -21,7 +21,9 @@ const registerStartCommand = async () => {
     // Kubernetes
     cmdx.addOption(new Option('--kube-auth <kubeAuth>', 'The authentication method to the cluster.').env('KUBE_AUTH').default('in-cluster').choices(['in-cluster', 'kubeconfig']))
         .addOption(new Option('--kube-pod-name <kubePodName>', 'The name of the current pod.').default('k8soketi').env('KUBE_POD_NAME'))
-        .addOption(new Option('--kube-pod-namespace <kubePodNamespace>', 'The namespace of the current pod.').default('default').env('KUBE_POD_NAMESPACE'));
+        .addOption(new Option('--kube-pod-namespace <kubePodNamespace>', 'The namespace of the current pod.').default('default').env('KUBE_POD_NAMESPACE'))
+        .addOption(new Option('--kube-pod-ip <kubePodIp>', 'The IP of the current pod.').default('10.32.0.1').env('KUBE_POD_IP'))
+        .addOption(new Option('--kube-discovery-services <kubeDiscoveryServices>', 'The services, separated by commas, to discover other pods.').default('k8soketi.default.svc.cluster.local').env('KUBE_SERVICES'));
 
     // Connection
     cmdx.addOption(new Option('--host <host>', 'The host to run the WebSockets/HTTP server on.').env('HOST').default('0.0.0.0'))
@@ -30,7 +32,6 @@ const registerStartCommand = async () => {
         .addOption(new Option('--peer-host <peerHost>', 'The host on which the peers will be exposed to TCP or WS. It has to be a private/public IP for distributed systems.').env('PEER_HOST').default('127.0.0.1'))
         .addOption(new Option('--peer-inactivity-timeout <peerInactivityTimeout>', 'The amount of time (in seconds) that should pass in order to disconnect a node from the P2P network.').env('PEER_INACTIVITY_TIMEOUT').default(10))
         .addOption(new Option('--peer-ws-port <peerWsPort>', 'The port on which the peer will be accessible via the WS protocol.').env('PEER_WS_PORT').default(11002).argParser(v => parseInt(v)))
-        .addOption(new Option('--peer-inactivity-timeout <peerInactivityTimeout>', 'The amount of time (in seconds) that should pass in order to disconnect a node from the P2P network.').env('PEER_INACTIVITY_TIMEOUT').default(10))
         // WS Configuration
         .addOption(new Option('--ws-grace-period <wsGracePeriod>', 'The amount of time to wait (in seconds) for the connections to be evicted, before closing the WebSockets server.').env('WS_GRACE_PERIOD').default(1).argParser(v => parseInt(v)))
         .addOption(new Option('--ws-max-backpressure-in-mb <wsMaxBackpressureInMb>', 'The max. backpressure (in MB). Read more: https://github.com/uNetworking/uWebSockets.js/blob/master/examples/Backpressure.js').env('WS_MAX_BACKPRESSURE_IN_MB').default(1).argParser(v => parseInt(v)))
@@ -70,7 +71,7 @@ const registerStartCommand = async () => {
         .addOption(new Option('--max-presence-members <maxPresenceMembersPerChannel>', 'The default limit of max. members that can exist simultaneously in a presence channel.').default(100).argParser(v => parseFloat(v)))
         .addOption(new Option('--max-presence-member-size-in-kb <maxPresenceMemberSizeInKb>', 'The default limit of max. size (in KB) of a single presence member object.').default(2).argParser(v => parseFloat(v)))
         .addOption(new Option('--max-payload-size-in-mb <maxPayloadSizeInMb>', 'The limit of max. size (in MB) a HTTP payload can have before throwing 413 Payload To Large.').default(50).argParser(v => parseFloat(v)))
-        .addOption(new Option('--accept-traffic-threshold <acceptTrafficThreshold>', 'The min. used memory percent after the /accept-traffic endpoint will return 500 errors (used to probe traffic redirection).').default(90));
+        .addOption(new Option('--accept-traffic-threshold <acceptTrafficThreshold>', 'The min. used memory percent after the pod will be marked as "not accepting new connections anymore".').default(80));
 
     // Metrics
     cmdx.addOption(new Option('--metrics', 'Enable the metrics endpoints.').default(false))
@@ -94,6 +95,8 @@ const registerStartCommand = async () => {
             'kube.authentication': options.kubeAuth,
             'kube.pod.name': options.kubePodName,
             'kube.pod.namespace': options.kubePodNamespace,
+            'kube.pod.ip': options.kubePodIp,
+            'kube.discovery.services': options.kubeDiscoveryServices.split(','),
 
             // Connection
             'websockets.server.host': options.host,

@@ -1,3 +1,4 @@
+import { bootstrap } from './discovery/k8s-service-discovery';
 import { Connection } from '@libp2p/interface-connection';
 import { CoreV1Api, KubeConfig, KubernetesObjectApi } from '@kubernetes/client-node';
 import { createLibp2p, Libp2p } from 'libp2p';
@@ -13,6 +14,7 @@ import { pipe } from 'it-pipe';
 import { Prometheus } from './prometheus';
 import { PubsubMessage } from './message';
 import { toString } from 'uint8arrays/to-string';
+import v8 from 'v8';
 import { webSockets } from '@libp2p/websockets';
 
 export interface RequestData {
@@ -42,13 +44,17 @@ export class PeerNode {
     protected libp2p: Libp2p;
     protected ensurePeerIsRunningHandlers: Set<CallableFunction> = new Set();
     protected listenersByTopic: Map<string, Set<(message: { [key: string]: any; }) => void>> = new Map();
+    protected kc: KubeConfig;
     closing = false;
+    memoryLocked = false;
 
     constructor(public options: Options) {
         //
     }
 
     async initialize(): Promise<void> {
+        await this.connectToCluster();
+
         this.libp2p = await createLibp2p({
             addresses: {
                 listen: [
@@ -86,13 +92,21 @@ export class PeerNode {
                 heartbeatInterval: 5e3,
             }),
             peerDiscovery: [
-                // TODO: Implement bootstrap by kube
+                bootstrap({
+                    kc: this.kc,
+                    services: this.options.kube.discovery.services,
+                    currentPod: this.options.kube.pod.name,
+                    namespace: this.options.kube.pod.namespace,
+                    peerPort: this.options.peer.ws.port,
+                }),
             ],
             metrics: {
                 enabled: this.options.metrics.enabled,
             },
         });
 
+        await this.updatePodMetadata();
+        await this.registerMemoryThresholdLockers();
         await this.registerPings();
         await this.registerPeerDiscovery();
         await this.registerPubSubMessageHandler();
@@ -288,52 +302,83 @@ export class PeerNode {
         });
     }
 
-    protected async updatePodMetadata(): Promise<void> {
-        let kc = new KubeConfig();
+    protected async connectToCluster(): Promise<void> {
+        this.kc = new KubeConfig();
 
         switch (this.options.kube.authentication) {
             case 'in-cluster':
-                kc.loadFromCluster();
+                this.kc.loadFromCluster();
             case 'kubeconfig':
-                kc.loadFromDefault();
+                this.kc.loadFromDefault();
                 break;
             default:
                 Log.error(`The Kubernetes authentication method cannot be handled. Got: ${this.options.kube.authentication}`);
                 throw new Error('Could not start server.');
         }
+    }
 
+    protected async updatePodMetadata(): Promise<void> {
         try {
-            let currentPod = await kc.makeApiClient(CoreV1Api).readNamespacedPod(
+            await this.kc.makeApiClient(CoreV1Api).patchNamespacedPod(
                 this.options.kube.pod.name,
                 this.options.kube.pod.namespace,
-            );
-
-            this.options.kube.pod.ip = currentPod.body.status.podIP;
-
-            await KubernetesObjectApi.makeApiClient(kc).patch({
-                kind: currentPod.body.kind,
-                apiVersion: currentPod.body.apiVersion,
-                metadata: {
-                    ...currentPod.body.metadata,
-                    annotations: {
-                        ...currentPod.body.metadata.annotations || {},
-                        'ip.soketi.app/peer-id': this.peerId.toString(),
-                        'ip.soketi.app/ready': 'yes',
+                {
+                    metadata: {
+                        annotations: {
+                            'k8s.soketi.app/peer-id': this.peerId.toString(),
+                            'k8s.soketi.app/ready': 'yes',
+                        },
+                        labels: {
+                            'k8s.soketi.app/low-memory': 'no',
+                        },
                     },
                 },
-            });
+                undefined, undefined, undefined, undefined, undefined, { headers: { 'Content-Type': 'application/merge-patch+json' } },
+            );
 
             Log.info(`🤖 Marked the current pod with the peer id: ${this.peerId.toString()}`);
             Log.info(`🤖 Current pod IP: ${this.options.kube.pod.ip}`);
-            Log.info('🤖 Add the following annotation to your services selectors: ip.soketi.app/ready=yes');
+            Log.info('🤖 Add the following annotation to your services selectors: k8s.soketi.app/ready=yes');
         } catch (e) {
-            if (e?.response?.body?.code !== 200) {
-                Log.error(`Updating the pod metadata did not work: ${e.response.body.message}`);
-                throw new Error('Could not start server.');
-            }
-
-            throw e;
+            Log.error(`Updating the pod metadata did not work: ${e}`);
+            throw new Error('Could not start server.');
         }
+    }
+
+    protected async registerMemoryThresholdLockers(): Promise<void> {
+        setInterval(() => {
+            let threshold = this.options.websockets.http.acceptTraffic.memoryThreshold;
+
+            let {
+                rss,
+                heapTotal,
+                external,
+                arrayBuffers,
+            } = process.memoryUsage();
+
+            let totalSize = v8.getHeapStatistics().total_available_size;
+            let usedSize = rss + heapTotal + external + arrayBuffers;
+            let percentUsage = (usedSize / totalSize) * 100;
+            let lowMemory = threshold < percentUsage;
+
+            let shouldUpdatePod = lowMemory !== this.memoryLocked;
+            this.memoryLocked = lowMemory;
+
+            if (shouldUpdatePod) {
+                this.kc.makeApiClient(CoreV1Api).patchNamespacedPod(
+                    this.options.kube.pod.name,
+                    this.options.kube.pod.namespace,
+                    {
+                        metadata: {
+                            labels: {
+                                'k8s.soketi.app/low-memory': lowMemory ? 'yes': 'no',
+                            },
+                        },
+                    },
+                    undefined, undefined, undefined, undefined, undefined, { headers: { 'Content-Type': 'application/merge-patch+json' } },
+                );
+            }
+        }, 1e3);
     }
 
     get peers() {
@@ -366,8 +411,6 @@ export class PeerNode {
         for await (let handler of this.ensurePeerIsRunningHandlers) {
             handler();
         }
-
-        await this.updatePodMetadata();
     }
 
     async stop(): Promise<void> {

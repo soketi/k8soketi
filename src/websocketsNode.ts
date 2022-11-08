@@ -220,10 +220,6 @@ export class WebsocketsNode {
         });
 
         if (this.canProcessRequests) {
-            this.app.get('/accept-traffic', async (res, req) => {
-                return await PusherHttpApiHandler.serve('acceptTraffic', res, req);
-            });
-
             this.app.get('/apps/:appId/channels', async (res, req) => {
                 return await PusherHttpApiHandler.serve('channels', res, req, [
                     new AppRetrievalMiddleware(this),
