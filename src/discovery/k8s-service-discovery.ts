@@ -38,7 +38,7 @@ class K8sServiceDiscovery extends EventEmitter<PeerDiscoveryEvents> implements P
             peerPort: 6002,
         },
     ) {
-        if (options.services == null || options.services.length === 0) {
+        if (options.services === null || options.services.length === 0) {
             throw new Error('Service discovery requires a services of Kubernetes service hostnames.');
         }
 
@@ -56,7 +56,7 @@ class K8sServiceDiscovery extends EventEmitter<PeerDiscoveryEvents> implements P
 
         let discoverPeers = () => {
             void this.discoverPeers().catch(err => {
-                Log.error(`[Discover] ${err}`);
+                Log.error(`[Discovery] ${err}`);
                 throw err;
             });
         };
@@ -78,78 +78,69 @@ class K8sServiceDiscovery extends EventEmitter<PeerDiscoveryEvents> implements P
                 return;
             }
 
-            // try {
-                let {
-                    body: { items: endpointSlices },
-                } = await this.options.kc.makeApiClient(DiscoveryV1Api).listNamespacedEndpointSlice(
-                    this.options.namespace,
-                    'true',
-                    false,
-                    null,
-                    null,
-                    `kubernetes.io/service-name=${hostname}`,
-                );
+            let {
+                body: { items: endpointSlices },
+            } = await this.options.kc.makeApiClient(DiscoveryV1Api).listNamespacedEndpointSlice(
+                this.options.namespace,
+                'true',
+                false,
+                null,
+                null,
+                `kubernetes.io/service-name=${hostname}`,
+            );
 
-                for await (let slice of endpointSlices) {
-                    let promises: Promise<{
-                        response: IncomingMessage;
-                        body: V1Pod;
-                        addresses: string[];
-                    }>[] = [];
+            for await (let slice of endpointSlices) {
+                let promises: Promise<{
+                    response: IncomingMessage;
+                    body: V1Pod;
+                    addresses: string[];
+                }>[] = [];
 
-                    promises = slice.endpoints.reduce((promises, { addresses, conditions, targetRef }) => {
-                        // Exclude ourselves.
-                        if (targetRef.name === this.options.currentPod && targetRef.namespace === this.options.namespace) {
-                            return promises;
-                        }
-
-                        if (!conditions.ready) {
-                            return promises;
-                        }
-
-                        let promise = this.options.kc.makeApiClient(CoreV1Api).readNamespacedPod(
-                            targetRef.name, this.options.namespace,
-                        );
-
-                        promises.push(promise.then(response => ({ ...response, addresses })));
+                promises = slice.endpoints.reduce((promises, { addresses, conditions, targetRef }) => {
+                    // Exclude ourselves.
+                    if (targetRef.name === this.options.currentPod && targetRef.namespace === this.options.namespace) {
                         return promises;
-                    }, promises);
+                    }
 
-                    Promise.allSettled(promises).then(async (results) => {
-                        for await (let result of results) {
-                            if (result.status === 'rejected') {
-                                continue;
-                            }
+                    if (!conditions.ready) {
+                        return promises;
+                    }
 
-                            let { addresses, body: { metadata } } = result.value;
-                            let peerId = metadata?.annotations['k8s.soketi.app/peer-id'] || null;
+                    let promise = this.options.kc.makeApiClient(CoreV1Api).readNamespacedPod(
+                        targetRef.name, this.options.namespace,
+                    );
 
-                            if (!peerId) {
-                                continue;
-                            }
+                    promises.push(promise.then(response => ({ ...response, addresses })));
+                    return promises;
+                }, promises);
 
-                            addresses.forEach(address => {
-                                this.dispatchEvent(new CustomEvent<PeerInfo>('peer', {
-                                    detail: {
-                                        id: peerIdFromString(peerId),
-                                        multiaddrs: [
-                                            multiaddr(`/ip4/${address}/tcp/${this.options.peerPort}/ws`),
-                                        ],
-                                        protocols: [],
-                                    },
-                                }));
-                            });
+                Promise.allSettled(promises).then(async (results) => {
+                    for await (let result of results) {
+                        if (result.status === 'rejected') {
+                            continue;
                         }
-                    });
-                }
 
-                // Log.info(`🤖 Marked the current pod with the peer id: ${this.peerId.toString()}`);
-                // Log.info(`🤖 Current pod IP: ${this.options.kube.pod.ip}`);
-                // Log.info('🤖 Add the following annotation to your services selectors: k8s.soketi.app/ready=yes');
-            // } catch (e) {
-            //     Log.error(`The service discovery had an issue: ${e}`);
-            //     throw new Error('Stopping the server.');
-            // }
+                        let { addresses, body: { metadata } } = result.value;
+                        let peerId = metadata?.annotations['k8s.soketi.app/peer-id'] || null;
+
+                        if (!peerId) {
+                            continue;
+                        }
+
+                        addresses.forEach(address => {
+                            this.dispatchEvent(new CustomEvent<PeerInfo>('peer', {
+                                detail: {
+                                    id: peerIdFromString(peerId),
+                                    multiaddrs: [
+                                        multiaddr(`/ip4/${address}/tcp/${this.options.peerPort}/ws`),
+                                    ],
+                                    protocols: [],
+                                },
+                            }));
+                        });
+                    }
+                });
+            }
         }
     }
 
