@@ -29,6 +29,7 @@ jobs:
           images: quay.io/soketi/k8soketi
           tags: |
             type=ref,event=pr,suffix=-${{ matrix.node }}-distroless
+            type=raw,value=${{ github.sha }}-${{ matrix.node }}-distroless
           labels: |
             quay.expires-after=7d
       - name: Set up QEMU
@@ -79,6 +80,7 @@ jobs:
           images: quay.io/soketi/k8soketi
           tags: |
             type=ref,event=pr,suffix=-${{ matrix.node }}-debian
+            type=raw,value=${{ github.sha }}-${{ matrix.node }}-distroless
           labels: |
             quay.expires-after=7d
       - name: Set up QEMU
