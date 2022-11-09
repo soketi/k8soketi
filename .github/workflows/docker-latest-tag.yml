@@ -23,6 +23,13 @@ jobs:
     name: Tag Latest Distroless (node:${{ matrix.node }})
     steps:
       - uses: actions/checkout@v3.0.2
+      - name: Docker meta
+        id: docker_meta
+        uses: docker/metadata-action@v4.0.1
+        with:
+          images: quay.io/soketi/k8soketi
+          tags: |
+            type=raw,value=latest-${{ matrix.node }}-distroless
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
@@ -40,10 +47,15 @@ jobs:
         with:
           push: true
           context: .
-          tags: quay.io/soketi/k8soketi:latest-${{ matrix.node }}-distroless
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
           file: Dockerfile.distroless
           build-args: |
             VERSION=${{ matrix.node }}
+          cache-from: |
+            type=gha,scope=distroless
+          cache-to: |
+            type=gha,scope=distroless
           platforms: |
             linux/amd64
             linux/arm64
@@ -57,6 +69,13 @@ jobs:
     name: Tag Latest Debian (node:${{ matrix.node }})
     steps:
       - uses: actions/checkout@v3.0.2
+      - name: Docker meta
+        id: docker_meta
+        uses: docker/metadata-action@v4.0.1
+        with:
+          images: quay.io/soketi/k8soketi
+          tags: |
+            type=raw,value=latest-${{ matrix.node }}-debian
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
@@ -74,10 +93,15 @@ jobs:
         with:
           push: true
           context: .
-          tags: quay.io/soketi/k8soketi:latest-${{ matrix.node }}-debian
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
           file: Dockerfile.debian
           build-args: |
             VERSION=${{ matrix.node }}
+          cache-from: |
+            type=gha,scope=debian
+          cache-to: |
+            type=gha,scope=debian
           platforms: |
             linux/amd64
             linux/arm64
