@@ -3,13 +3,12 @@ import { CustomEvent, EventEmitter } from '@libp2p/interfaces/events';
 import { IncomingMessage } from 'http';
 import { Log } from '../log';
 import { multiaddr } from '@multiformats/multiaddr';
+import { PeerDiscovery, PeerDiscoveryEvents } from '@libp2p/interface-peer-discovery';
+import { PeerId } from '@libp2p/interface-peer-id';
 import { peerIdFromString } from '@libp2p/peer-id';
+import { PeerInfo } from '@libp2p/interface-peer-info';
+import { Startable } from '@libp2p/interfaces/dist/src/startable';
 import { symbol } from '@libp2p/interface-peer-discovery';
-
-import type { PeerDiscovery, PeerDiscoveryEvents } from '@libp2p/interface-peer-discovery';
-import type { PeerInfo } from '@libp2p/interface-peer-info';
-import type { PeerStore } from '@libp2p/interface-peer-store';
-import type { Startable } from '@libp2p/interfaces/dist/src/startable';
 
 export interface K8sServiceDiscoveryInit {
     services: string[];
@@ -20,7 +19,7 @@ export interface K8sServiceDiscoveryInit {
 }
 
 export interface K8sServiceDiscoveryComponents {
-    peerStore: PeerStore;
+    peerId: PeerId;
 }
 
 class K8sServiceDiscovery extends EventEmitter<PeerDiscoveryEvents> implements PeerDiscovery, Startable {
@@ -123,7 +122,7 @@ class K8sServiceDiscovery extends EventEmitter<PeerDiscoveryEvents> implements P
                         let { addresses, body: { metadata } } = result.value;
                         let peerId = metadata?.annotations['k8s.soketi.app/peer-id'] || null;
 
-                        if (!peerId) {
+                        if (!peerId || peerId === this.components.peerId.toString()) {
                             continue;
                         }
 
