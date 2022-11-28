@@ -64,7 +64,7 @@
     "@aws-sdk/client-sqs": "^3.188.0",
     "@aws-sdk/util-dynamodb": "^3.188.0",
     "@chainsafe/libp2p-gossipsub": "^5.0.0",
-    "@chainsafe/libp2p-noise": "^10.0.0",
+    "@chainsafe/libp2p-noise": "^10.2.0",
     "@kubernetes/client-node": "^0.17.1",
     "@libp2p/mplex": "^7.0.0",
     "@libp2p/webrtc-direct": "^4.0.1",
