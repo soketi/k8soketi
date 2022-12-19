@@ -68,7 +68,7 @@
     "@kubernetes/client-node": "^0.17.1",
     "@libp2p/mplex": "^7.0.0",
     "@libp2p/webrtc-direct": "^4.0.1",
-    "@libp2p/websockets": "^5.0.0",
+    "@libp2p/websockets": "^5.0.2",
     "@rxfork/sqs-consumer": "^6.0.0",
     "arraybuffer-to-string": "^1.0.2",
     "axios": "^1.1.3",
