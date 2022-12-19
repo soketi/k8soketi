@@ -79,7 +79,7 @@
     "libp2p": "^0.40.0",
     "prom-client": "^14.1.0",
     "pusher": "^5.1.1-beta",
-    "query-string": "^7.1.1",
+    "query-string": "^8.0.3",
     "rate-limiter-flexible": "^2.3.12",
     "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js.git#v20.10.0"
   },
