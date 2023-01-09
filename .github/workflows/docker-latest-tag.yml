@@ -22,7 +22,7 @@ jobs:
           - '18'
     name: Tag Latest Distroless (node:${{ matrix.node }})
     steps:
-      - uses: actions/checkout@v3.0.2
+      - uses: actions/checkout@v3.3.0
       - name: Docker meta
         id: docker_meta
         uses: docker/metadata-action@v4.0.1
@@ -68,7 +68,7 @@ jobs:
           - '18'
     name: Tag Latest Debian (node:${{ matrix.node }})
     steps:
-      - uses: actions/checkout@v3.0.2
+      - uses: actions/checkout@v3.3.0
       - name: Docker meta
         id: docker_meta
         uses: docker/metadata-action@v4.0.1
