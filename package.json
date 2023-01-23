@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.188.0",
-    "@aws-sdk/client-lambda": "^3.188.0",
+    "@aws-sdk/client-lambda": "^3.254.0",
     "@aws-sdk/client-sqs": "^3.188.0",
     "@aws-sdk/util-dynamodb": "^3.188.0",
     "@chainsafe/libp2p-gossipsub": "^5.0.0",
